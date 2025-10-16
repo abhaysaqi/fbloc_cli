@@ -51,8 +51,8 @@ class ProjectGenerator {
         projectPath: projectName, config: config);
 
     // Step 6: Generate default home_screen view
-    await ViewGenerator.generateView('home_screen', 'home',
-        projectPath: projectName, config: config);
+    // await ViewGenerator.generateView('home_screen', 'home',
+    //     projectPath: projectName, config: config);
 
     print('✅ Project $projectName created successfully!');
     print('📁 Configuration saved in .cli_config.json');
