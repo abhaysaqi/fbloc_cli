@@ -18,6 +18,14 @@ class ProjectGenerator {
       return;
     }
 
+    // Verify Flutter is available on PATH (no static paths)
+    if (!await _isFlutterAvailable()) {
+      print('❌ Flutter not found on PATH.');
+      print(
+          '   Ensure Flutter is installed and `flutter` is available in your PATH.');
+      return;
+    }
+
     // Step 1: Interactive setup prompts
     final config = await ConfigUtils.promptForConfiguration();
 
@@ -63,45 +71,57 @@ class ProjectGenerator {
   }
 
   static Future<ProcessResult> _runPubGet(String projectName) async {
+    // Prefer PATH-based flutter; fallback to flutter.bat for Windows
     try {
       return await Process.run(
-        'C:\\flutter\\bin\\flutter.bat',
+        'flutter',
         ['pub', 'get'],
         workingDirectory: projectName,
       );
-    } catch (e) {
+    } catch (_) {
       try {
         return await Process.run(
-          'flutter',
+          'flutter.bat',
           ['pub', 'get'],
           workingDirectory: projectName,
         );
-      } catch (e2) {
+      } catch (_) {
         return ProcessResult(0, 1, '', 'Could not run pub get');
       }
     }
   }
 
-  // Updated method for your specific Flutter path
+  static Future<bool> _isFlutterAvailable() async {
+    try {
+      final r = await Process.run('flutter', ['--version']);
+      if (r.exitCode == 0) return true;
+    } catch (_) {}
+    try {
+      final r = await Process.run('flutter.bat', ['--version']);
+      if (r.exitCode == 0) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  // Use PATH-based flutter create (with Windows fallback)
   static Future<ProcessResult> _runFlutterCreate(String projectName) async {
     print('🔍 Attempting to run Flutter create...');
 
+    // Try `flutter` first (macOS/Linux/Windows when PATH resolves)
     try {
-      // Use your exact Flutter path first
-      print('🔍 Trying: C:\\flutter\\bin\\flutter.bat');
-      final result = await Process.run(
-          'C:\\flutter\\bin\\flutter.bat', ['create', projectName]);
+      print('🔍 Trying: flutter create');
+      final result = await Process.run('flutter', ['create', projectName]);
       if (result.exitCode == 0) {
-        print('✅ Success with direct path!');
+        print('✅ Success with flutter!');
         return result;
       }
     } catch (e) {
-      print('❌ Direct path failed: $e');
+      print('❌ flutter failed: $e');
     }
 
+    // Fallback for Windows where flutter.bat is on PATH
     try {
-      // Try flutter.bat command
-      print('🔍 Trying: flutter.bat');
+      print('🔍 Trying: flutter.bat create');
       final result = await Process.run('flutter.bat', ['create', projectName]);
       if (result.exitCode == 0) {
         print('✅ Success with flutter.bat!');
@@ -111,25 +131,8 @@ class ProjectGenerator {
       print('❌ flutter.bat failed: $e');
     }
 
-    try {
-      // Try through cmd shell with your path
-      print('🔍 Trying: cmd /c with your Flutter path');
-      final result = await Process.run(
-        'cmd',
-        ['/c', 'C:\\flutter\\bin\\flutter.bat', 'create', projectName],
-        runInShell: true,
-      );
-      if (result.exitCode == 0) {
-        print('✅ Success with cmd shell!');
-        return result;
-      }
-    } catch (e) {
-      print('❌ cmd shell failed: $e');
-    }
-
-    // If all attempts fail
     return ProcessResult(
-        0, 1, '', 'Could not execute flutter create command with any method');
+        0, 1, '', 'Could not execute flutter create from PATH');
   }
 
   static Future<void> _replaceProjectStructure(
