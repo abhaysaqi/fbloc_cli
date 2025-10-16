@@ -45,21 +45,8 @@ flutter:
     if (config.navigation == 'go_router') {
       return '''
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'app/core/theme/app_theme.dart';
-import 'app/features/home/view/home_screen.dart';
-
-final GoRouter _router = GoRouter(
-  initialLocation: '/',
-  routes: <RouteBase>[
-    GoRoute(
-      path: '/',
-      builder: (BuildContext context, GoRouterState state) {
-        return const HomeScreen();
-      },
-    ),
-  ],
-);
+import 'app/routes/app_routes.dart';
 
 void main() {
   runApp(const MyApp());
@@ -73,7 +60,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Flutter Demo',
       theme: AppTheme.lightTheme,
-      routerConfig: _router,
+      routerConfig: router,
     );
   }
 }
@@ -318,11 +305,11 @@ class ApiService {
   static String getAppRoutesTemplate(CliConfig config) {
     if (config.navigation == 'go_router') {
       return '''
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'route_names.dart';
 import '../features/home/view/home_screen.dart';
 
-final GoRouter _router = GoRouter(
+final GoRouter router = GoRouter(
   initialLocation: '/',
   routes: <RouteBase>[
     GoRoute(
@@ -730,7 +717,7 @@ class $pascalViewName extends StatelessWidget {
   static String getBottomNavbarTemplate() {
     return '''
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class BottomNavbar extends StatelessWidget {
   const BottomNavbar({super.key});
