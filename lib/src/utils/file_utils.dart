@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:path/path.dart' as path;
 
 class FileUtils {
   static Future<void> createDirectory(String dirPath) async {
@@ -23,8 +22,6 @@ class FileUtils {
   }
 
   static String toSnakeCase(String text) {
-    return text
-        .replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), '_')
-        .toLowerCase();
+    return text.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), '_').toLowerCase();
   }
 }

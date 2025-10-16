@@ -1,5 +1,3 @@
-library fbloc_cli;
-
 import 'package:args/command_runner.dart';
 import 'src/commands/create_command.dart';
 import 'src/commands/feature_command.dart';

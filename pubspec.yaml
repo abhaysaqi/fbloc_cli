@@ -15,5 +15,15 @@ dev_dependencies:
   lints: ^6.0.0
   test: ^1.21.0
 
+repository: https://github.com/abhaysaqi/fbloc_cli
+issue_tracker: https://github.com/abhaysaqi/fbloc_cli/issues
+
+topics:
+  - cli
+  - scaffolding
+  - bloc
+  - flutter
+  - generator
+
 executables:
   fbloc: fbloc_cli

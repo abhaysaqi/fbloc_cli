@@ -15,8 +15,9 @@ class TemplateUtils {
     } else {
       dependencies.add('http: ^1.4.0');
     }
-    if (config.navigation == 'go_router')
+    if (config.navigation == 'go_router') {
       dependencies.add('go_router: ^16.0.0');
+    }
 
     return '''
 name: $projectName
