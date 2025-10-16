@@ -4,6 +4,7 @@ import '../models/cli_config.dart';
 import '../utils/config_utils.dart';
 import '../utils/file_utils.dart';
 import '../utils/template_utils.dart';
+import 'view_generator.dart';
 
 class FeatureGenerator {
   static Future<void> generateFeature(String featureName,
@@ -58,6 +59,14 @@ class FeatureGenerator {
 
     // Generate Model files
     await _generateModelFiles(basePath, featureName, config);
+
+    // Generate a default view (home_screen) for the new feature
+    await ViewGenerator.generateView(
+      '${featureName}_screen',
+      featureName,
+      projectPath: projectPath,
+      config: config,
+    );
 
     print('✅ Feature $featureName generated successfully!');
   }
