@@ -1,12 +1,14 @@
 import 'package:args/command_runner.dart';
 import '../generators/view_generator.dart';
 
+/// Command to scaffold a new view inside an existing feature.
 class ViewCommand extends Command {
   @override
   final name = 'view';
   @override
   final description = 'Create a new view inside a feature';
 
+  /// Executes the view generation.
   @override
   Future<void> run() async {
     final args = argResults!.rest;
