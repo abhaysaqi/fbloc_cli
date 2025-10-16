@@ -1,4 +1,4 @@
-## 1.0.2
+## 1.0.3
 
 - Make CLI platform-agnostic by replacing `interact` with stdin/stdout prompts
 - Add dartdoc to public API (commands, config, core)
