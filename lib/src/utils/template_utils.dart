@@ -6,17 +6,17 @@ class TemplateUtils {
   static String getPubspecTemplate(String projectName, CliConfig config) {
     final dependencies = <String>[
       'flutter:\n    sdk: flutter',
-      'flutter_bloc: ^8.1.3',
+      'flutter_bloc: ^9.1.1',
     ];
 
-    if (config.useEquatable) dependencies.add('equatable: ^2.0.5');
+    if (config.useEquatable) dependencies.add('equatable: ^2.0.7');
     if (config.networkPackage == 'dio') {
-      dependencies.add('dio: ^5.3.2');
+      dependencies.add('dio: ^5.9.0');
     } else {
-      dependencies.add('http: ^1.1.0');
+      dependencies.add('http: ^1.4.0');
     }
     if (config.navigation == 'go_router')
-      dependencies.add('go_router: ^12.1.1');
+      dependencies.add('go_router: ^16.0.0');
 
     return '''
 name: $projectName
@@ -33,7 +33,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
