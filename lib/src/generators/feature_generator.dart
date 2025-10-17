@@ -60,6 +60,12 @@ class FeatureGenerator {
     // Generate Model files
     await _generateModelFiles(basePath, featureName, config);
 
+    // Generate Response model
+    await FileUtils.writeFile(
+      path.join(basePath, 'model', '${featureName}_response.dart'),
+      TemplateUtils.getResponseModelTemplate(featureName, config),
+    );
+
     // Generate a default view (home_screen) for the new feature
     await ViewGenerator.generateView(
       '${featureName}_screen',

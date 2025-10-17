@@ -159,6 +159,26 @@ class AppColors {
 ''';
   }
 
+  static String getApiEndpointsTemplate() {
+    return '''
+class ApiEndpoints {
+  // Base URL of your backend server
+  static const String baseUrl = "https://example.com/api";
+
+  // 🏠 Home Endpoints
+  static const String homes = "\$baseUrl/homes";
+  static String homeById(String id) => "\$baseUrl/homes/\$id";
+
+  // 👤 Auth Endpoints
+  static const String login = "\$baseUrl/auth/login";
+  static const String register = "\$baseUrl/auth/register";
+
+  // 📰 Example extra endpoint (if you add more features later)
+  static const String categories = "\$baseUrl/categories";
+}
+''';
+  }
+
   static String getAppThemeTemplate() {
     return '''
 import 'package:flutter/material.dart';
@@ -262,13 +282,14 @@ class AppStyles {
       return '''
 import 'package:dio/dio.dart';
 import '../utils/constants.dart';
+import 'api_endpoints.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal() {
     _dio = Dio(BaseOptions(
-      baseUrl: AppConstants.baseUrl,
+      baseUrl: ApiEndpoints.baseUrl,
       connectTimeout: AppConstants.timeoutDuration,
       receiveTimeout: AppConstants.timeoutDuration,
       headers: {'Content-Type': 'application/json'},
@@ -302,6 +323,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
+import 'api_endpoints.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -311,7 +333,7 @@ class ApiService {
   Future<Map<String, dynamic>> get(String endpoint) async {
     try {
       final response = await http.get(
-        Uri.parse('\${AppConstants.baseUrl}\$endpoint'),
+        Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(AppConstants.timeoutDuration);
 
@@ -416,22 +438,55 @@ import '../repository/${featureName}_repository.dart';
 import '${featureName}_event.dart';
 import '${featureName}_state.dart';
 import '../model/${featureName}_model.dart';
+import '../model/${featureName}_response.dart';
 
 class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
   final ${pascalName}Repository _repository;
+  int _currentPage = 1;
+  bool _hasMore = true;
+  bool _isLoading = false;
+  final List<${pascalName}Model> _items = [];
 
   ${pascalName}Bloc(this._repository) : super(${pascalName}Initial()) {
     on<${pascalName}Started>(_onStarted);
+    on<${pascalName}LoadMore>(_onLoadMore);
   }
 
   Future<void> _onStarted(${pascalName}Started event, Emitter<${pascalName}State> emit) async {
+    if (_isLoading) return;
+    _isLoading = true;
     emit(${pascalName}Loading());
     try {
-      final List<${pascalName}Model> items = await _repository.get${pascalName}s();
-      emit(${pascalName}Loaded(items));
+      _currentPage = 1;
+      _hasMore = true;
+      _items.clear();
+      final ${featureName}Response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
+      _items.addAll(${featureName}Response.data);
+      _hasMore = ${featureName}Response.data.isNotEmpty;
+      _currentPage++;
+      emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
     }
+    _isLoading = false;
+  }
+
+  Future<void> _onLoadMore(${pascalName}LoadMore event, Emitter<${pascalName}State> emit) async {
+    if (_isLoading || !_hasMore) return;
+    _isLoading = true;
+    try {
+      final ${featureName}Response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
+      if (${featureName}Response.data.isEmpty) {
+        _hasMore = false;
+      } else {
+        _items.addAll(${featureName}Response.data);
+        _currentPage++;
+      }
+      emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
+    } catch (e) {
+      emit(${pascalName}Error(e.toString()));
+    }
+    _isLoading = false;
   }
 }
 ''';
@@ -455,6 +510,8 @@ abstract class ${pascalName}Event$equatableExtends {
 }
 
 class ${pascalName}Started extends ${pascalName}Event {}
+
+class ${pascalName}LoadMore extends ${pascalName}Event {}
 ''';
   }
 
@@ -482,20 +539,15 @@ class ${pascalName}Loading extends ${pascalName}State {}
 
 class ${pascalName}Loaded extends ${pascalName}State {
   final List<${pascalName}Model> items;
+  final bool hasMore;
 
-  const ${pascalName}Loaded(this.items)${config.useEquatable ? ''';
-
-  @override
-  List<Object> get props => [items];''' : ''}
+  const ${pascalName}Loaded(this.items, {this.hasMore = true});
 }
 
 class ${pascalName}Error extends ${pascalName}State {
   final String message;
   
-  const ${pascalName}Error(this.message);${config.useEquatable ? '''
-  
-  @override
-  List<Object> get props => [message];''' : ''}
+  const ${pascalName}Error(this.message);
 }
 ''';
   }
@@ -508,20 +560,43 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../repository/${featureName}_repository.dart';
 import '${featureName}_state.dart';
 import '../model/${featureName}_model.dart';
+import '../model/${featureName}_response.dart';
 
 class ${pascalName}Cubit extends Cubit<${pascalName}State> {
   final ${pascalName}Repository _repository;
+  int _currentPage = 1;
+  bool _hasMore = true;
+  bool _isLoading = false;
+  final List<${pascalName}Model> _items = [];
 
   ${pascalName}Cubit(this._repository) : super(${pascalName}Initial());
 
-  Future<void> loadData() async {
-    emit(${pascalName}Loading());
-    try {
-      final List<${pascalName}Model> items = await _repository.get${pascalName}s();
-      emit(${pascalName}Loaded(items));
-    } catch (e) {
-      emit(${pascalName}Error(e.toString()));
+  Future<void> loadData({bool refresh = false}) async {
+    if (_isLoading) return;
+    _isLoading = true;
+    if (refresh) {
+      _currentPage = 1;
+      _items.clear();
+      _hasMore = true;
+      emit(${pascalName}Loading());
     }
+    try {
+      if (!_hasMore) {
+        _isLoading = false;
+        return;
+      }
+      final response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
+      if (response.data.isEmpty) {
+        _hasMore = false;
+      } else {
+        _items.addAll(response.data);
+        _currentPage++;
+      }
+      emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
+    } catch (e) {
+      emit(${pascalName}Error('Failed to load data'));
+    }
+    _isLoading = false;
   }
 
   void showError(String message) {
@@ -556,19 +631,13 @@ class ${pascalName}Loading extends ${pascalName}State {}
 class ${pascalName}Loaded extends ${pascalName}State {
   final List<${pascalName}Model> items;
 
-  const ${pascalName}Loaded(this.items)${config.useEquatable ? ''';
-
-  @override
-  List<Object> get props => [items];''' : ''}
+  const ${pascalName}Loaded(this.items);
 }
 
 class ${pascalName}Error extends ${pascalName}State {
   final String message;
   
-  const ${pascalName}Error(this.message);${config.useEquatable ? '''
-  
-  @override
-  List<Object> get props => [message];''' : ''}
+  const ${pascalName}Error(this.message);
 }
 ''';
   }
@@ -578,9 +647,10 @@ class ${pascalName}Error extends ${pascalName}State {
 
     return '''
 import '../model/${featureName}_model.dart';
+import '../model/${featureName}_response.dart';
 
 abstract class ${pascalName}Repository {
-  Future<List<${pascalName}Model>> get${pascalName}s();
+  Future<${pascalName}Response> get${pascalName}s({int page = 1, int limit = 10});
   Future<${pascalName}Model> get${pascalName}ById(String id);
   Future<${pascalName}Model> create$pascalName(${pascalName}Model $featureName);
   Future<${pascalName}Model> update$pascalName(${pascalName}Model $featureName);
@@ -595,17 +665,18 @@ abstract class ${pascalName}Repository {
     return '''
 import '../../../core/service/api_service.dart';
 import '../model/${featureName}_model.dart';
+import '../model/${featureName}_response.dart';
 import '${featureName}_repository.dart';
+import '../../../core/service/api_endpoints.dart';
 
 class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   final ApiService _apiService = ApiService();
 
   @override
-  Future<List<${pascalName}Model>> get${pascalName}s() async {
+  Future<${pascalName}Response> get${pascalName}s({int page = 1, int limit = 10}) async {
     try {
-      final response = await _apiService.get('/${featureName}s');
-      final List<dynamic> data = response['data'];
-      return data.map((json) => ${pascalName}Model.fromJson(json)).toList();
+      final res = await _apiService.get('\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit');
+      return ${pascalName}Response.fromJson(res);
     } catch (e) {
       throw Exception('Failed to fetch ${featureName}s: \$e');
     }
@@ -614,8 +685,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<${pascalName}Model> get${pascalName}ById(String id) async {
     try {
-      final response = await _apiService.get('/${featureName}s/\$id');
-      return ${pascalName}Model.fromJson(response['data']);
+      final res = await _apiService.get('\${ApiEndpoints.${featureName}ById(\$id)}');
+      return ${pascalName}Model.fromJson(res['data']);
     } catch (e) {
       throw Exception('Failed to fetch $featureName: \$e');
     }
@@ -624,8 +695,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<${pascalName}Model> create$pascalName(${pascalName}Model $featureName) async {
     try {
-      final response = await _apiService.post('/${featureName}s', $featureName.toJson());
-      return ${pascalName}Model.fromJson(response['data']);
+      final res = await _apiService.post('\${ApiEndpoints.${featureName}s}', $featureName.toJson());
+      return ${pascalName}Model.fromJson(res['data']);
     } catch (e) {
       throw Exception('Failed to create $featureName: \$e');
     }
@@ -634,8 +705,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<${pascalName}Model> update$pascalName(${pascalName}Model $featureName) async {
     try {
-      final response = await _apiService.post('/${featureName}s/\${$featureName.id}', $featureName.toJson());
-      return ${pascalName}Model.fromJson(response['data']);
+      final res = await _apiService.post('\${ApiEndpoints.${featureName}ById(\$${featureName}.id)}', $featureName.toJson());
+      return ${pascalName}Model.fromJson(res['data']);
     } catch (e) {
       throw Exception('Failed to update $featureName: \$e');
     }
@@ -644,7 +715,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<void> delete$pascalName(String id) async {
     try {
-      await _apiService.get('/${featureName}s/\$id');
+      await _apiService.get('\${ApiEndpoints.${featureName}ById(\$id)}');
     } catch (e) {
       throw Exception('Failed to delete $featureName: \$e');
     }
@@ -730,6 +801,36 @@ class ${pascalName}Model$equatableExtends {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }$propsOverride
+}
+''';
+  }
+
+  static String getResponseModelTemplate(String featureName, CliConfig config) {
+    final pascalName = FileUtils.toPascalCase(featureName);
+    return '''
+import '${featureName}_model.dart';
+
+class ${pascalName}Response {
+  final bool success;
+  final String message;
+  final List<${pascalName}Model> data;
+
+  ${pascalName}Response({
+    required this.success,
+    required this.message,
+    required this.data,
+  });
+
+  factory ${pascalName}Response.fromJson(Map<String, dynamic> json) {
+    final list = (json['data'] as List<dynamic>? ?? [])
+        .map((e) => ${pascalName}Model.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return ${pascalName}Response(
+      success: json['success'] as bool? ?? true,
+      message: json['message'] as String? ?? '',
+      data: list,
+    );
+  }
 }
 ''';
   }

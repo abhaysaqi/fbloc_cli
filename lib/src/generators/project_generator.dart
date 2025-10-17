@@ -209,6 +209,12 @@ class ProjectGenerator {
       path.join(basePath, 'core/service/api_service.dart'),
       TemplateUtils.getApiServiceTemplate(config),
     );
+
+    // API Endpoints
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/service/api_endpoints.dart'),
+      TemplateUtils.getApiEndpointsTemplate(),
+    );
   }
 
   static Future<void> _createRouteFiles(
