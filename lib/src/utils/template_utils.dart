@@ -43,11 +43,19 @@ flutter:
 
   // Main Template
   static String getMainTemplate(CliConfig config) {
+    final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
+    final stateClassSuffix =
+        config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit';
+
     if (config.navigation == 'go_router') {
       return '''
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
+import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
+import 'app/features/home/repository/home_repository.dart';
+import 'app/features/home/repository/home_repository_impl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -58,10 +66,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Flutter Demo',
-      theme: AppTheme.lightTheme,
-      routerConfig: router,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
+        RepositoryProvider<ApiService>(create: (_) => ApiService()),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => Home$stateClassSuffix(
+            context.read<HomeRepository>(),
+          )${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
+        ],
+        child: MaterialApp.router(
+          title: 'Flutter Demo',
+          theme: AppTheme.lightTheme,
+          routerConfig: router,
+        ),
+      ),
     );
   }
 }
@@ -69,9 +90,13 @@ class MyApp extends StatelessWidget {
     } else {
       return '''
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/routes/route_names.dart';
+import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
+import 'app/features/home/repository/home_repository.dart';
+import 'app/features/home/repository/home_repository_impl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -82,11 +107,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: AppTheme.lightTheme,
-      onGenerateRoute: AppRoutes.generateRoute,
-      initialRoute: RouteNames.home,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
+        RepositoryProvider<ApiService>(create: (_) => ApiService()),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => Home$stateClassSuffix(
+            context.read<HomeRepository>(),
+          )${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
+        ],
+        child: MaterialApp(
+          title: 'Flutter Demo',
+          theme: AppTheme.lightTheme,
+          onGenerateRoute: AppRoutes.generateRoute,
+          initialRoute: RouteNames.home,
+        ),
+      ),
     );
   }
 }
@@ -367,18 +405,25 @@ class RouteNames {
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
 $equatableImport
+import '../repository/${featureName}_repository.dart';
 import '${featureName}_event.dart';
 import '${featureName}_state.dart';
 
 class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
-  ${pascalName}Bloc() : super(${pascalName}Initial()) {
+  final ${pascalName}Repository _repository;
+
+  ${pascalName}Bloc(this._repository) : super(${pascalName}Initial()) {
     on<${pascalName}Started>(_onStarted);
   }
 
-  void _onStarted(${pascalName}Started event, Emitter<${pascalName}State> emit) {
+  Future<void> _onStarted(${pascalName}Started event, Emitter<${pascalName}State> emit) async {
     emit(${pascalName}Loading());
-    // Add your logic here
-    emit(${pascalName}Loaded());
+    try {
+      await _repository.get${pascalName}s();
+      emit(${pascalName}Loaded());
+    } catch (e) {
+      emit(${pascalName}Error(e.toString()));
+    }
   }
 }
 ''';
@@ -444,15 +489,22 @@ class ${pascalName}Error extends ${pascalName}State {
 
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../repository/${featureName}_repository.dart';
 import '${featureName}_state.dart';
 
 class ${pascalName}Cubit extends Cubit<${pascalName}State> {
-  ${pascalName}Cubit() : super(${pascalName}Initial());
+  final ${pascalName}Repository _repository;
 
-  void loadData() {
+  ${pascalName}Cubit(this._repository) : super(${pascalName}Initial());
+
+  Future<void> loadData() async {
     emit(${pascalName}Loading());
-    // Add your logic here
-    emit(${pascalName}Loaded());
+    try {
+      await _repository.get${pascalName}s();
+      emit(${pascalName}Loaded());
+    } catch (e) {
+      emit(${pascalName}Error(e.toString()));
+    }
   }
 
   void showError(String message) {
@@ -665,9 +717,6 @@ class ${pascalName}Model$equatableExtends {
     final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final stateClass =
         '$pascalFeatureName${config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit'}';
-    final stateEvent = config.stateManagement == 'bloc'
-        ? '..add(${pascalFeatureName}Started())'
-        : '..loadData()';
 
     return '''
 import 'package:flutter/material.dart';
@@ -682,33 +731,31 @@ class $pascalViewName extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => $stateClass()$stateEvent,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('$pascalViewName'),
-        ),
-        body: BlocBuilder<$stateClass, ${pascalFeatureName}State>(
-          builder: (context, state) {
-            if (state is ${pascalFeatureName}Loading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            
-            if (state is ${pascalFeatureName}Error) {
-              return Center(child: Text('Error: \${state.message}'));
-            }
-            
-            if (state is ${pascalFeatureName}Loaded) {
-              return const Center(
-                child: Text('$pascalViewName Content'),
-              );
-            }
-            
-            return const Center(child: Text('Initial State'));
-          },
-        ),
-        ${viewName == 'home_screen' ? 'bottomNavigationBar: const BottomNavbar(),' : ''}
+    final bloc = context.read<$stateClass>();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('$pascalViewName'),
       ),
+      body: BlocBuilder<$stateClass, ${pascalFeatureName}State>(
+        builder: (context, state) {
+          if (state is ${pascalFeatureName}Loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (state is ${pascalFeatureName}Error) {
+            return Center(child: Text('Error: \${state.message}'));
+          }
+          
+          if (state is ${pascalFeatureName}Loaded) {
+            return const Center(
+              child: Text('$pascalViewName Content'),
+            );
+          }
+          
+          return const Center(child: Text('Initial State'));
+        },
+      ),
+      ${viewName == 'home_screen' ? 'bottomNavigationBar: const BottomNavbar(),' : ''}
     );
   }
 }

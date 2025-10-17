@@ -5,7 +5,6 @@ import '../utils/config_utils.dart';
 import '../utils/file_utils.dart';
 import '../utils/template_utils.dart';
 import 'feature_generator.dart';
-import 'view_generator.dart';
 
 class ProjectGenerator {
   static Future<void> generateProject(String projectName) async {
