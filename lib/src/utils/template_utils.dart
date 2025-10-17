@@ -46,6 +46,9 @@ flutter:
     final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final stateClassSuffix =
         config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit';
+    final blocEventImport = config.stateManagement == 'bloc'
+        ? "import 'app/features/home/bloc/home_event.dart';"
+        : '';
 
     if (config.navigation == 'go_router') {
       return '''
@@ -57,7 +60,7 @@ import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/repository/home_repository.dart';
 import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/service/api_service.dart';
-import 'app/features/home/bloc/home_event.dart';
+$blocEventImport
 
 void main() {
   runApp(const MyApp());
@@ -100,7 +103,7 @@ import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/repository/home_repository.dart';
 import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/service/api_service.dart';
-import 'app/features/home/bloc/home_event.dart';
+$blocEventImport
 
 void main() {
   runApp(const MyApp());
@@ -412,6 +415,7 @@ $equatableImport
 import '../repository/${featureName}_repository.dart';
 import '${featureName}_event.dart';
 import '${featureName}_state.dart';
+import '../model/${featureName}_model.dart';
 
 class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
   final ${pascalName}Repository _repository;
@@ -423,8 +427,8 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
   Future<void> _onStarted(${pascalName}Started event, Emitter<${pascalName}State> emit) async {
     emit(${pascalName}Loading());
     try {
-      await _repository.get${pascalName}s();
-      emit(${pascalName}Loaded());
+      final List<${pascalName}Model> items = await _repository.get${pascalName}s();
+      emit(${pascalName}Loaded(items));
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
     }
@@ -466,6 +470,7 @@ class ${pascalName}Started extends ${pascalName}Event {}
 
     return '''
 ${config.useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+import '../model/${featureName}_model.dart';
 
 abstract class ${pascalName}State$equatableExtends {
   const ${pascalName}State();$propsOverride
@@ -475,7 +480,14 @@ class ${pascalName}Initial extends ${pascalName}State {}
 
 class ${pascalName}Loading extends ${pascalName}State {}
 
-class ${pascalName}Loaded extends ${pascalName}State {}
+class ${pascalName}Loaded extends ${pascalName}State {
+  final List<${pascalName}Model> items;
+
+  const ${pascalName}Loaded(this.items)${config.useEquatable ? ''';
+
+  @override
+  List<Object> get props => [items];''' : ''}
+}
 
 class ${pascalName}Error extends ${pascalName}State {
   final String message;
@@ -495,6 +507,7 @@ class ${pascalName}Error extends ${pascalName}State {
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../repository/${featureName}_repository.dart';
 import '${featureName}_state.dart';
+import '../model/${featureName}_model.dart';
 
 class ${pascalName}Cubit extends Cubit<${pascalName}State> {
   final ${pascalName}Repository _repository;
@@ -504,8 +517,8 @@ class ${pascalName}Cubit extends Cubit<${pascalName}State> {
   Future<void> loadData() async {
     emit(${pascalName}Loading());
     try {
-      await _repository.get${pascalName}s();
-      emit(${pascalName}Loaded());
+      final List<${pascalName}Model> items = await _repository.get${pascalName}s();
+      emit(${pascalName}Loaded(items));
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
     }
@@ -530,6 +543,7 @@ class ${pascalName}Cubit extends Cubit<${pascalName}State> {
 
     return '''
 ${config.useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+import '../model/${featureName}_model.dart';
 
 abstract class ${pascalName}State$equatableExtends {
   const ${pascalName}State();$propsOverride
@@ -539,7 +553,14 @@ class ${pascalName}Initial extends ${pascalName}State {}
 
 class ${pascalName}Loading extends ${pascalName}State {}
 
-class ${pascalName}Loaded extends ${pascalName}State {}
+class ${pascalName}Loaded extends ${pascalName}State {
+  final List<${pascalName}Model> items;
+
+  const ${pascalName}Loaded(this.items)${config.useEquatable ? ''';
+
+  @override
+  List<Object> get props => [items];''' : ''}
+}
 
 class ${pascalName}Error extends ${pascalName}State {
   final String message;
@@ -721,13 +742,17 @@ class ${pascalName}Model$equatableExtends {
     final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final stateClass =
         '$pascalFeatureName${config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit'}';
+    final eventImport = config.stateManagement == 'bloc'
+        ? "import '../$stateFolder/${featureName}_event.dart';"
+        : '';
+    final itemVar = 'item';
 
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../$stateFolder/${featureName}_${config.stateManagement}.dart';
 import '../$stateFolder/${featureName}_state.dart';
-import '../$stateFolder/${featureName}_event.dart';
+$eventImport
 ${viewName == 'home_screen' ? "import 'components/bottom_navbar.dart';" : ''}
 
 class $pascalViewName extends StatelessWidget {
@@ -745,14 +770,24 @@ class $pascalViewName extends StatelessWidget {
           if (state is ${pascalFeatureName}Loading) {
             return const Center(child: CircularProgressIndicator());
           }
-          
           if (state is ${pascalFeatureName}Error) {
             return Center(child: Text('Error: \${state.message}'));
           }
           
           if (state is ${pascalFeatureName}Loaded) {
-            return const Center(
-              child: Text('$pascalViewName Content'),
+            final items = state.items;
+            if (items.isEmpty) {
+              return const Center(child: Text('No items'));
+            }
+            return ListView.builder(
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final $itemVar = items[index];
+                return ListTile(
+                  title: Text($itemVar.name),
+                  subtitle: Text($itemVar.id),
+                );
+              },
             );
           }
           

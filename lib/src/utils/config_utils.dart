@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:interact/interact.dart' as interact;
 import '../models/cli_config.dart';
 
 /// Utilities for prompting, saving, and loading CLI configuration.
@@ -7,35 +8,38 @@ class ConfigUtils {
   static Future<CliConfig> promptForConfiguration() async {
     print('🔧 Let\'s configure your project:\n');
 
-    // Network package selection
+    // Network package selection (arrow-key toggle)
     final networkOptions = ['http', 'dio'];
-    final networkPackage = _promptSelect(
-      label: 'Choose network package (http/dio)',
+    final networkIndex = interact.Select(
+      prompt: 'Choose network package',
       options: networkOptions,
-      defaultValue: 'http',
-    );
+      initialIndex: 0,
+    ).interact();
+    final networkPackage = networkOptions[networkIndex];
 
     // State management selection
     final stateOptions = ['bloc', 'cubit'];
-    final stateManagement = _promptSelect(
-      label: 'Choose state management (bloc/cubit)',
+    final stateIndex = interact.Select(
+      prompt: 'Choose state management',
       options: stateOptions,
-      defaultValue: 'bloc',
-    );
+      initialIndex: 0,
+    ).interact();
+    final stateManagement = stateOptions[stateIndex];
 
     // Navigation selection
     final navigationOptions = ['go_router', 'navigator'];
-    final navigation = _promptSelect(
-      label: 'Choose navigation (go_router/navigator)',
+    final navIndex = interact.Select(
+      prompt: 'Choose navigation',
       options: navigationOptions,
-      defaultValue: 'go_router',
-    );
+      initialIndex: 0,
+    ).interact();
+    final navigation = navigationOptions[navIndex];
 
     // Equatable confirmation
-    final useEquatable = _promptConfirm(
-      label: 'Use Equatable for value equality? (Y/n)',
+    final useEquatable = interact.Confirm(
+      prompt: 'Use Equatable for value equality?',
       defaultValue: true,
-    );
+    ).interact();
 
     return CliConfig(
       networkPackage: networkPackage,
@@ -71,37 +75,4 @@ class ConfigUtils {
   }
 }
 
-String _promptLine(String label, {String? defaultValue}) {
-  stdout.write(defaultValue == null ? '$label: ' : '$label [$defaultValue]: ');
-  final input = stdin.readLineSync()?.trim();
-  if (input == null || input.isEmpty) {
-    return defaultValue ?? '';
-  }
-  return input;
-}
-
-String _promptSelect({
-  required String label,
-  required List<String> options,
-  required String defaultValue,
-}) {
-  while (true) {
-    final raw = _promptLine(label, defaultValue: defaultValue).toLowerCase();
-    if (options.contains(raw)) return raw;
-    print('Please enter one of: ${options.join(', ')}');
-  }
-}
-
-bool _promptConfirm({
-  required String label,
-  required bool defaultValue,
-}) {
-  while (true) {
-    final def = defaultValue ? 'Y' : 'n';
-    final raw = _promptLine(label, defaultValue: def).toLowerCase();
-    if (raw.isEmpty) return defaultValue;
-    if (raw == 'y' || raw == 'yes') return true;
-    if (raw == 'n' || raw == 'no') return false;
-    print('Please answer Y or n.');
-  }
-}
+// Legacy stdin helpers removed in favor of arrow-key interactions via `interact`.
