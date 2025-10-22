@@ -1,6 +1,6 @@
 import '../models/cli_config.dart';
 import 'file_utils.dart';
-
+// all templates files
 class TemplateUtils {
   // Pubspec Template
   static String getPubspecTemplate(String projectName, CliConfig config) {
