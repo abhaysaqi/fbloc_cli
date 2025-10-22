@@ -765,7 +765,7 @@ class $pascalViewName extends StatelessWidget {
 }
 ''';
   }
-
+// this called only when project create
   static String getBottomNavbarTemplate() {
     return '''
 import 'package:flutter/material.dart';
