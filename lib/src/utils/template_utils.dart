@@ -862,7 +862,6 @@ class $pascalViewName extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bloc = context.read<$stateClass>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('$pascalViewName'),
