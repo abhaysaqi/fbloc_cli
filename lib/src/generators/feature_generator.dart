@@ -74,6 +74,11 @@ class FeatureGenerator {
       config: config,
     );
 
+    // Generate components for home feature
+    if (featureName == 'home') {
+      await _generateHomeComponents(basePath, projectPath);
+    }
+
     print('✅ Feature $featureName generated successfully!');
   }
 
@@ -126,6 +131,25 @@ class FeatureGenerator {
     await FileUtils.writeFile(
       path.join(basePath, 'model', '${featureName}_model.dart'),
       TemplateUtils.getModelTemplate(featureName, config),
+    );
+  }
+
+  static Future<void> _generateHomeComponents(
+      String basePath, String? projectPath) async {
+    // Create components directory
+    final componentsPath = path.join(basePath, 'view', 'components');
+    await FileUtils.createDirectory(componentsPath);
+
+    // Generate bottom navbar
+    await FileUtils.writeFile(
+      path.join(componentsPath, 'bottom_navbar.dart'),
+      TemplateUtils.getBottomNavbarTemplate(),
+    );
+
+    // Generate app drawer
+    await FileUtils.writeFile(
+      path.join(componentsPath, 'app_drawer.dart'),
+      TemplateUtils.getAppDrawerTemplate(),
     );
   }
 }

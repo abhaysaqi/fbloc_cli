@@ -145,16 +145,26 @@ class MyApp extends StatelessWidget {
 import 'package:flutter/material.dart';
 
 class AppColors {
+  // Primary colors
   static const Color primary = Color(0xFF2196F3);
   static const Color secondary = Color(0xFF03DAC6);
   static const Color error = Color(0xFFB00020);
+  
+  // Surface colors
   static const Color surface = Color(0xFFFFFFFF);
   static const Color background = Color(0xFFF5F5F5);
+  
+  // On colors
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onSecondary = Color(0xFF000000);
   static const Color onError = Color(0xFFFFFFFF);
   static const Color onSurface = Color(0xFF000000);
   static const Color onBackground = Color(0xFF000000);
+  
+  // Additional colors
+  static const Color grey = Color(0xFF9E9E9E);
+  static const Color lightGrey = Color(0xFFE0E0E0);
+  static const Color darkGrey = Color(0xFF424242);
 }
 ''';
   }
@@ -162,16 +172,16 @@ class AppColors {
   static String getApiEndpointsTemplate() {
     return '''
 class ApiEndpoints {
-  // Base URL of your backend server
-  static const String baseUrl = "https://example.com/api";
+  // Base URL from environment
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://reqres.in/api');
 
   // 🏠 Home Endpoints
-  static const String homes = "\$baseUrl/homes";
-  static String homeById(String id) => "\$baseUrl/homes/\$id";
+  static const String homes = "\$baseUrl/users";
+  static String homeById(String id) => "\$baseUrl/users/\$id";
 
   // 👤 Auth Endpoints
-  static const String login = "\$baseUrl/auth/login";
-  static const String register = "\$baseUrl/auth/register";
+  static const String login = "\$baseUrl/login";
+  static const String register = "\$baseUrl/register";
 
   // 📰 Example extra endpoint (if you add more features later)
   static const String categories = "\$baseUrl/categories";
@@ -219,7 +229,8 @@ class AppConstants {
   static const String appVersion = '1.0.0';
   
   // API Constants
-  static const String baseUrl = 'https://api.example.com';
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://reqres.in/api');
+  static const String apiKey = String.fromEnvironment('API_KEY', defaultValue: 'reqres-free-v1');
   static const Duration timeoutDuration = Duration(seconds: 30);
   
   // Storage Keys
@@ -232,6 +243,7 @@ class AppConstants {
   static String getStringsTemplate() {
     return '''
 class AppStrings {
+  // Common strings
   static const String loading = 'Loading...';
   static const String error = 'Something went wrong';
   static const String retry = 'Retry';
@@ -239,6 +251,25 @@ class AppStrings {
   static const String ok = 'OK';
   static const String save = 'Save';
   static const String delete = 'Delete';
+  
+  // Home screen strings
+  static const String homeScreen = 'Home';
+  static const String noItemsFound = 'No items found';
+  static const String initialState = 'Initial State';
+  static const String errorPrefix = 'Error:';
+  static const String idPrefix = 'ID:';
+  
+  // Drawer strings
+  static const String welcomeUser = 'Welcome User';
+  static const String userEmail = 'user@example.com';
+  static const String home = 'Home';
+  static const String profile = 'Profile';
+  static const String settings = 'Settings';
+  static const String helpSupport = 'Help & Support';
+  static const String logout = 'Logout';
+  
+  // Bottom navigation strings
+  static const String search = 'Search';
 }
 ''';
   }
@@ -276,12 +307,61 @@ class AppStyles {
 ''';
   }
 
+  static String getCommonResponseTemplate() {
+    return '''
+class ApiResponse<T> {
+  final bool success;
+  final String message;
+  final T? data;
+  final int? statusCode;
+
+  ApiResponse({
+    required this.success,
+    required this.message,
+    this.data,
+    this.statusCode,
+  });
+
+  factory ApiResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(dynamic)? fromJsonT,
+  ) {
+    return ApiResponse<T>(
+      success: json['success'] as bool? ?? true,
+      message: json['message'] as String? ?? '',
+      data: fromJsonT != null && json['data'] != null 
+          ? fromJsonT(json['data']) 
+          : null,
+      statusCode: json['status_code'] as int?,
+    );
+  }
+
+  factory ApiResponse.success(T data, {String message = 'Success'}) {
+    return ApiResponse<T>(
+      success: true,
+      message: message,
+      data: data,
+    );
+  }
+
+  factory ApiResponse.error(String message, {int? statusCode}) {
+    return ApiResponse<T>(
+      success: false,
+      message: message,
+      statusCode: statusCode,
+    );
+  }
+}
+''';
+  }
+
   // API Service Template
   static String getApiServiceTemplate(CliConfig config) {
     if (config.networkPackage == 'dio') {
       return '''
 import 'package:dio/dio.dart';
 import '../utils/constants.dart';
+import '../utils/api_response.dart';
 import 'api_endpoints.dart';
 
 class ApiService {
@@ -292,27 +372,30 @@ class ApiService {
       baseUrl: ApiEndpoints.baseUrl,
       connectTimeout: AppConstants.timeoutDuration,
       receiveTimeout: AppConstants.timeoutDuration,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer \${AppConstants.apiKey}',
+      },
     ));
   }
 
   late final Dio _dio;
 
-  Future<Map<String, dynamic>> get(String endpoint) async {
+  Future<ApiResponse<T>> get<T>(String endpoint, T Function(dynamic)? fromJson) async {
     try {
       final response = await _dio.get(endpoint);
-      return response.data;
+      return ApiResponse.fromJson(response.data, fromJson);
     } on DioException catch (e) {
-      throw Exception('Network error: \${e.message}');
+      return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
     }
   }
 
-  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data) async {
+  Future<ApiResponse<T>> post<T>(String endpoint, Map<String, dynamic> data, T Function(dynamic)? fromJson) async {
     try {
       final response = await _dio.post(endpoint, data: data);
-      return response.data;
+      return ApiResponse.fromJson(response.data, fromJson);
     } on DioException catch (e) {
-      throw Exception('Network error: \${e.message}');
+      return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
     }
   }
 }
@@ -320,9 +403,9 @@ class ApiService {
     } else {
       return '''
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
+import '../utils/api_response.dart';
 import 'api_endpoints.dart';
 
 class ApiService {
@@ -330,38 +413,45 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  Future<Map<String, dynamic>> get(String endpoint) async {
+  Future<ApiResponse<T>> get<T>(String endpoint, T Function(dynamic)? fromJson) async {
     try {
       final response = await http.get(
         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer \${AppConstants.apiKey}',
+        },
       ).timeout(AppConstants.timeoutDuration);
 
-      return _handleResponse(response);
+      return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      throw Exception('Network error: \$e');
+      return ApiResponse.error('Network error: \$e');
     }
   }
 
-  Future<Map<String, dynamic>> post(String endpoint, Map<String, dynamic> data) async {
+  Future<ApiResponse<T>> post<T>(String endpoint, Map<String, dynamic> data, T Function(dynamic)? fromJson) async {
     try {
       final response = await http.post(
-        Uri.parse('\${AppConstants.baseUrl}\$endpoint'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer \${AppConstants.apiKey}',
+        },
         body: jsonEncode(data),
       ).timeout(AppConstants.timeoutDuration);
 
-      return _handleResponse(response);
+      return _handleResponse<T>(response, fromJson);
     } catch (e) {
-      throw Exception('Network error: \$e');
+      return ApiResponse.error('Network error: \$e');
     }
   }
 
-  Map<String, dynamic> _handleResponse(http.Response response) {
+  ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic)? fromJson) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
+      final jsonData = jsonDecode(response.body);
+      return ApiResponse.fromJson(jsonData, fromJson);
     } else {
-      throw HttpException('HTTP \${response.statusCode}: \${response.body}');
+      return ApiResponse.error('HTTP \${response.statusCode}: \${response.body}', statusCode: response.statusCode);
     }
   }
 }
@@ -433,12 +523,10 @@ class RouteNames {
 
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
-$equatableImport
 import '../repository/${featureName}_repository.dart';
 import '${featureName}_event.dart';
 import '${featureName}_state.dart';
 import '../model/${featureName}_model.dart';
-import '../model/${featureName}_response.dart';
 
 class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
   final ${pascalName}Repository _repository;
@@ -460,11 +548,15 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
       _currentPage = 1;
       _hasMore = true;
       _items.clear();
-      final ${featureName}Response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
-      _items.addAll(${featureName}Response.data);
-      _hasMore = ${featureName}Response.data.isNotEmpty;
-      _currentPage++;
-      emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
+      final response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
+      if (response.success && response.data != null) {
+        _items.addAll(response.data!);
+        _hasMore = response.data!.isNotEmpty;
+        _currentPage++;
+        emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
+      } else {
+        emit(${pascalName}Error(response.message));
+      }
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
     }
@@ -475,14 +567,18 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
     if (_isLoading || !_hasMore) return;
     _isLoading = true;
     try {
-      final ${featureName}Response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
-      if (${featureName}Response.data.isEmpty) {
-        _hasMore = false;
+      final response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
+      if (response.success && response.data != null) {
+        if (response.data!.isEmpty) {
+          _hasMore = false;
+        } else {
+          _items.addAll(response.data!);
+          _currentPage++;
+        }
+        emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        _items.addAll(${featureName}Response.data);
-        _currentPage++;
+        emit(${pascalName}Error(response.message));
       }
-      emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
     }
@@ -560,7 +656,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../repository/${featureName}_repository.dart';
 import '${featureName}_state.dart';
 import '../model/${featureName}_model.dart';
-import '../model/${featureName}_response.dart';
 
 class ${pascalName}Cubit extends Cubit<${pascalName}State> {
   final ${pascalName}Repository _repository;
@@ -586,13 +681,17 @@ class ${pascalName}Cubit extends Cubit<${pascalName}State> {
         return;
       }
       final response = await _repository.get${pascalName}s(page: _currentPage, limit: 10);
-      if (response.data.isEmpty) {
-        _hasMore = false;
+      if (response.success && response.data != null) {
+        if (response.data!.isEmpty) {
+          _hasMore = false;
+        } else {
+          _items.addAll(response.data!);
+          _currentPage++;
+        }
+        emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        _items.addAll(response.data);
-        _currentPage++;
+        emit(${pascalName}Error(response.message));
       }
-      emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
     } catch (e) {
       emit(${pascalName}Error('Failed to load data'));
     }
@@ -648,14 +747,14 @@ class ${pascalName}Error extends ${pascalName}State {
 
     return '''
 import '../model/${featureName}_model.dart';
-import '../model/${featureName}_response.dart';
+import '../../../core/utils/api_response.dart';
 
 abstract class ${pascalName}Repository {
-  Future<${pascalName}Response> get${pascalName}s({int page = 1, int limit = 10});
-  Future<${pascalName}Model> get${pascalName}ById(String id);
-  Future<${pascalName}Model> create$pascalName(${pascalName}Model $featureName);
-  Future<${pascalName}Model> update$pascalName(${pascalName}Model $featureName);
-  Future<void> delete$pascalName(String id);
+  Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
+  Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id);
+  Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName);
+  Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName);
+  Future<ApiResponse<void>> delete$pascalName(String id);
 }
 ''';
   }
@@ -666,60 +765,58 @@ abstract class ${pascalName}Repository {
     return '''
 import '../../../core/service/api_service.dart';
 import '../model/${featureName}_model.dart';
-import '../model/${featureName}_response.dart';
 import '${featureName}_repository.dart';
 import '../../../core/service/api_endpoints.dart';
+import '../../../core/utils/api_response.dart';
 
 class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   final ApiService _apiService = ApiService();
 
   @override
-  Future<${pascalName}Response> get${pascalName}s({int page = 1, int limit = 10}) async {
-    try {
-      final res = await _apiService.get('\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit');
-      return ${pascalName}Response.fromJson(res);
-    } catch (e) {
-      throw Exception('Failed to fetch ${featureName}s: \$e');
-    }
+  Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
+    final response = await _apiService.get<List<${pascalName}Model>>(
+      '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
+      (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
+    );
+    return response;
   }
 
   @override
-  Future<${pascalName}Model> get${pascalName}ById(String id) async {
-    try {
-      final res = await _apiService.get('{ApiEndpoints.${featureName}ById(id)}');
-      return ${pascalName}Model.fromJson(res['data']);
-    } catch (e) {
-      throw Exception('Failed to fetch $featureName: \$e');
-    }
+  Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
+    final response = await _apiService.get<${pascalName}Model>(
+      ApiEndpoints.${featureName}ById(id),
+      (data) => ${pascalName}Model.fromJson(data),
+    );
+    return response;
   }
 
   @override
-  Future<${pascalName}Model> create$pascalName(${pascalName}Model $featureName) async {
-    try {
-      final res = await _apiService.post('{ApiEndpoints.${featureName}s}', ${featureName}.toJson());
-      return ${pascalName}Model.fromJson(res['data']);
-    } catch (e) {
-      throw Exception('Failed to create $featureName: \$e');
-    }
+  Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
+    final response = await _apiService.post<${pascalName}Model>(
+      ApiEndpoints.${featureName}s,
+      $featureName.toJson(),
+      (data) => ${pascalName}Model.fromJson(data),
+    );
+    return response;
   }
 
   @override
-  Future<${pascalName}Model> update$pascalName(${pascalName}Model $featureName) async {
-    try {
-      final res = await _apiService.post('{ApiEndpoints.${featureName}ById($featureName.id)}', $featureName.toJson());
-      return ${pascalName}Model.fromJson(res['data']);
-    } catch (e) {
-      throw Exception('Failed to update $featureName: \$e');
-    }
+  Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
+    final response = await _apiService.post<${pascalName}Model>(
+      ApiEndpoints.${featureName}ById($featureName.id),
+      $featureName.toJson(),
+      (data) => ${pascalName}Model.fromJson(data),
+    );
+    return response;
   }
 
   @override
-  Future<void> delete$pascalName(String id) async {
-    try {
-      await _apiService.get('{ApiEndpoints.${featureName}ById(id)}');
-    } catch (e) {
-      throw Exception('Failed to delete $featureName: \$e');
-    }
+  Future<ApiResponse<void>> delete$pascalName(String id) async {
+    final response = await _apiService.get<void>(
+      ApiEndpoints.${featureName}ById(id),
+      null,
+    );
+    return response;
   }
 }
 ''';
@@ -849,13 +946,118 @@ class ${pascalName}Response {
         : '';
     final itemVar = 'item';
 
-    return '''
+    if (viewName == 'home_screen') {
+      return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../$stateFolder/${featureName}_${config.stateManagement}.dart';
 import '../$stateFolder/${featureName}_state.dart';
 $eventImport
-${viewName == 'home_screen' ? "import 'components/bottom_navbar.dart';" : ''}
+import 'components/bottom_navbar.dart';
+import 'components/app_drawer.dart';
+import '../../../core/utils/strings.dart';
+import '../../../core/theme/app_colors.dart';
+
+class $pascalViewName extends StatefulWidget {
+  const $pascalViewName({super.key});
+
+  @override
+  State<$pascalViewName> createState() => _${pascalViewName}State();
+}
+
+class _${pascalViewName}State extends State<$pascalViewName> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(AppStrings.homeScreen),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+      ),
+      drawer: const AppDrawer(),
+      body: BlocBuilder<$stateClass, ${pascalFeatureName}State>(
+        builder: (context, state) {
+          if (state is ${pascalFeatureName}Loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is ${pascalFeatureName}Error) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('\${AppStrings.errorPrefix} \${state.message}'),
+                  ElevatedButton(
+                    onPressed: () {
+                      ${config.stateManagement == 'bloc' ? 'context.read<$stateClass>().add(${pascalFeatureName}Started());' : 'context.read<$stateClass>().loadData(refresh: true);'}
+                    },
+                    child: const Text(AppStrings.retry),
+                  ),
+                ],
+              ),
+            );
+          }
+          
+          if (state is ${pascalFeatureName}Loaded) {
+            final items = state.items;
+            if (items.isEmpty) {
+              return const Center(child: Text(AppStrings.noItemsFound));
+            }
+            return RefreshIndicator(
+              onRefresh: () async {
+                ${config.stateManagement == 'bloc' ? 'context.read<$stateClass>().add(${pascalFeatureName}Started());' : 'context.read<$stateClass>().loadData(refresh: true);'}
+              },
+              child: ListView.builder(
+                itemCount: items.length + (state.hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == items.length) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  final $itemVar = items[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: ListTile(
+                      title: Text($itemVar.name),
+                      subtitle: Text('\${AppStrings.idPrefix} \${$itemVar.id}'),
+                      trailing: const Icon(Icons.arrow_forward_ios),
+                      onTap: () {
+                        // Handle item tap
+                      },
+                    ),
+                  );
+                },
+              ),
+            );
+          }
+          
+          return const Center(child: Text(AppStrings.initialState));
+        },
+      ),
+      bottomNavigationBar: BottomNavbar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+      ),
+    );
+  }
+}
+''';
+    } else {
+      return '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../$stateFolder/${featureName}_${config.stateManagement}.dart';
+import '../$stateFolder/${featureName}_state.dart';
+$eventImport
 
 class $pascalViewName extends StatelessWidget {
   const $pascalViewName({super.key});
@@ -892,49 +1094,158 @@ class $pascalViewName extends StatelessWidget {
             );
           }
           
-          return const Center(child: Text('Initial State'));
+          return const Center(child: Text(AppStrings.initialState));
         },
       ),
-      ${viewName == 'home_screen' ? 'bottomNavigationBar: const BottomNavbar(),' : ''}
     );
   }
 }
 ''';
+    }
   }
 
   static String getBottomNavbarTemplate() {
     return '''
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/strings.dart';
 
 class BottomNavbar extends StatelessWidget {
-  const BottomNavbar({super.key});
+  final int selectedIndex;
+  final Function(int) onItemTapped;
+
+  const BottomNavbar({
+    super.key,
+    required this.selectedIndex,
+    required this.onItemTapped,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
+      currentIndex: selectedIndex,
+      onTap: onItemTapped,
       backgroundColor: AppColors.surface,
       selectedItemColor: AppColors.primary,
-      unselectedItemColor: Colors.grey,
+      unselectedItemColor: AppColors.grey,
       type: BottomNavigationBarType.fixed,
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
-          label: 'Home',
+          label: AppStrings.home,
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.search),
-          label: 'Search',
+          label: AppStrings.search,
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),
-          label: 'Profile',
+          label: AppStrings.profile,
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings),
-          label: 'Settings',
+          label: AppStrings.settings,
         ),
       ],
+    );
+  }
+}
+''';
+  }
+
+  static String getAppDrawerTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/strings.dart';
+
+class AppDrawer extends StatelessWidget {
+  const AppDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.onPrimary,
+                  child: Icon(
+                    Icons.person,
+                    size: 40,
+                    color: AppColors.primary,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  AppStrings.welcomeUser,
+                  style: TextStyle(
+                    color: AppColors.onPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  AppStrings.userEmail,
+                  style: TextStyle(
+                    color: AppColors.onPrimary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: const Text(AppStrings.home),
+            onTap: () {
+              Navigator.pop(context);
+              // Navigate to home
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: const Text(AppStrings.profile),
+            onTap: () {
+              Navigator.pop(context);
+              // Navigate to profile
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text(AppStrings.settings),
+            onTap: () {
+              Navigator.pop(context);
+              // Navigate to settings
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.help),
+            title: const Text(AppStrings.helpSupport),
+            onTap: () {
+              Navigator.pop(context);
+              // Navigate to help
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text(AppStrings.logout),
+            onTap: () {
+              Navigator.pop(context);
+              // Handle logout
+            },
+          ),
+        ],
+      ),
     );
   }
 }

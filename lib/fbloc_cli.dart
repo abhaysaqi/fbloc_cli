@@ -36,7 +36,7 @@ class FblocCli {
     }
   }
 
-  /// Rewrites `create <name>` to `create project <name>` to allow a shorter command.
+  /// Handles direct project creation: `fbloc create projectName`
   List<String> _normalizeArguments(List<String> args) {
     if (args.isEmpty) return args;
     if (args[0] != 'create') return args;
@@ -46,7 +46,7 @@ class FblocCli {
       return args;
     }
 
-    // If exactly `create <name>` (or with additional trailing args), rewrite
+    // If exactly `create <name>` (or with additional trailing args), rewrite to use project subcommand
     if (args.length >= 2) {
       return ['create', 'project', ...args.sublist(1)];
     }

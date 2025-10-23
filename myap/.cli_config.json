@@ -1,0 +1,6 @@
+{
+  "network_package": "dio",
+  "state_management": "bloc",
+  "navigation": "go_router",
+  "equatable": true
+}

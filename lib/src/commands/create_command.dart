@@ -30,8 +30,14 @@ class CreateCommand extends Command {
       print('  fbloc create feature <feature_name>');
       return;
     }
-    
 
+    // Check if the first argument is a subcommand
+    if (rest.first == 'project' || rest.first == 'feature') {
+      // Let the subcommand handle it
+      return;
+    }
+
+    // Treat as direct project creation
     final projectName = rest.first;
     await ProjectGenerator.generateProject(projectName);
   }
