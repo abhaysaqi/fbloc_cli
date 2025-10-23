@@ -630,8 +630,9 @@ class ${pascalName}Loading extends ${pascalName}State {}
 
 class ${pascalName}Loaded extends ${pascalName}State {
   final List<${pascalName}Model> items;
+  final bool hasMore;
 
-  const ${pascalName}Loaded(this.items);
+  const ${pascalName}Loaded(this.items, {this.hasMore = true});
 }
 
 class ${pascalName}Error extends ${pascalName}State {
@@ -685,7 +686,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<${pascalName}Model> get${pascalName}ById(String id) async {
     try {
-      final res = await _apiService.get('\${ApiEndpoints.${featureName}ById(\$id)}');
+      final res = await _apiService.get('{ApiEndpoints.${featureName}ById(id)}');
       return ${pascalName}Model.fromJson(res['data']);
     } catch (e) {
       throw Exception('Failed to fetch $featureName: \$e');
@@ -695,7 +696,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<${pascalName}Model> create$pascalName(${pascalName}Model $featureName) async {
     try {
-      final res = await _apiService.post('\${ApiEndpoints.${featureName}s}', $featureName.toJson());
+      final res = await _apiService.post('{ApiEndpoints.${featureName}s}', ${featureName}.toJson());
       return ${pascalName}Model.fromJson(res['data']);
     } catch (e) {
       throw Exception('Failed to create $featureName: \$e');
@@ -705,7 +706,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<${pascalName}Model> update$pascalName(${pascalName}Model $featureName) async {
     try {
-      final res = await _apiService.post('\${ApiEndpoints.${featureName}ById(\$${featureName}.id)}', $featureName.toJson());
+      final res = await _apiService.post('{ApiEndpoints.${featureName}ById($featureName.id)}', $featureName.toJson());
       return ${pascalName}Model.fromJson(res['data']);
     } catch (e) {
       throw Exception('Failed to update $featureName: \$e');
@@ -715,7 +716,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<void> delete$pascalName(String id) async {
     try {
-      await _apiService.get('\${ApiEndpoints.${featureName}ById(\$id)}');
+      await _apiService.get('{ApiEndpoints.${featureName}ById(id)}');
     } catch (e) {
       throw Exception('Failed to delete $featureName: \$e');
     }

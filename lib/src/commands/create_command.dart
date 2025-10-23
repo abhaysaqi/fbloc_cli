@@ -30,6 +30,7 @@ class CreateCommand extends Command {
       print('  fbloc create feature <feature_name>');
       return;
     }
+    
 
     final projectName = rest.first;
     await ProjectGenerator.generateProject(projectName);
