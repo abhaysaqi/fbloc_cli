@@ -15,6 +15,9 @@ class FblocCli {
   /// This sets up the command runner and delegates to sub-commands
   /// like `create`, `feature`, and `view`.
   Future<void> run(List<String> arguments) async {
+    // Preprocess arguments to support `fbloc create <project_name>`
+    final normalizedArgs = _normalizeArguments(arguments);
+
     final runner = CommandRunner<void>(
       'fbloc',
       'A scaffolding CLI for Flutter projects with feature-first architecture',
@@ -26,10 +29,28 @@ class FblocCli {
       ..addCommand(ViewCommand());
 
     try {
-      await runner.run(arguments);
+      await runner.run(normalizedArgs);
     } catch (e) {
       // Print a user-friendly error without stack traces for CLI UX.
       print('Error: $e');
     }
+  }
+
+  /// Handles direct project creation: `fbloc create projectName`
+  List<String> _normalizeArguments(List<String> args) {
+    if (args.isEmpty) return args;
+    if (args[0] != 'create') return args;
+
+    // If already specifying a subcommand (project/feature), keep as-is
+    if (args.length >= 2 && (args[1] == 'project' || args[1] == 'feature')) {
+      return args;
+    }
+
+    // If exactly `create <name>` (or with additional trailing args), rewrite to use project subcommand
+    if (args.length >= 2) {
+      return ['create', 'project', ...args.sublist(1)];
+    }
+
+    return args;
   }
 }

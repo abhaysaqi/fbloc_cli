@@ -204,10 +204,21 @@ class ProjectGenerator {
       TemplateUtils.getStylesTemplate(),
     );
 
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/utils/api_response.dart'),
+      TemplateUtils.getCommonResponseTemplate(),
+    );
+
     // Service
     await FileUtils.writeFile(
       path.join(basePath, 'core/service/api_service.dart'),
       TemplateUtils.getApiServiceTemplate(config),
+    );
+
+    // API Endpoints
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/service/api_endpoints.dart'),
+      TemplateUtils.getApiEndpointsTemplate(),
     );
   }
 
