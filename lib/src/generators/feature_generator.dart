@@ -154,8 +154,6 @@
 //   }
 // }
 
-
-
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import '../models/cli_config.dart';
@@ -334,7 +332,7 @@ class FeatureGenerator {
     await FileUtils.writeFile(
       path.join(basePath, 'view', 'screens', 'sign_up_screen.dart'),
       TemplateUtils.getSignUpScreenTemplate(config),
-    );  
+    );
     await FileUtils.writeFile(
       path.join(basePath, 'view', 'screens', 'forgot_password_screen.dart'),
       TemplateUtils.getForgotPasswordScreenTemplate(config),

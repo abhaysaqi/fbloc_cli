@@ -86,7 +86,6 @@
 
 
 import 'package:args/command_runner.dart';
-import 'package:fbloc_cli/src/utils/config_utils.dart';
 import '../generators/project_generator.dart';
 import '../generators/feature_generator.dart';
 

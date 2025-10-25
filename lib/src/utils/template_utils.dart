@@ -2308,9 +2308,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 ''';
   }
 
-// Add similar compact templates for SignUp, ForgotPassword, OTP, ResetPassword screens...
-// (I'll provide these separately to keep this response manageable)
-
 // ============ AUTH COMPONENTS ============
 
   static String getAuthTextFieldTemplate() {
