@@ -218,7 +218,7 @@ class ProjectGenerator {
     // API Endpoints
     await FileUtils.writeFile(
       path.join(basePath, 'core/service/api_endpoints.dart'),
-      TemplateUtils.getApiEndpointsTemplate(),
+      TemplateUtils.getApiEndpointsTemplate(config),
     );
   }
 
