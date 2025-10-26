@@ -62,27 +62,6 @@ class ProjectGenerator {
     }
   }
 
-  static Future<ProcessResult> _runPubGet(String projectName) async {
-    // Prefer PATH-based flutter; fallback to flutter.bat for Windows
-    try {
-      return await Process.run(
-        'flutter',
-        ['pub', 'get'],
-        workingDirectory: projectName,
-      );
-    } catch (_) {
-      try {
-        return await Process.run(
-          'flutter.bat',
-          ['pub', 'get'],
-          workingDirectory: projectName,
-        );
-      } catch (_) {
-        return ProcessResult(0, 1, '', 'Could not run pub get');
-      }
-    }
-  }
-
   static Future<bool> _isFlutterAvailable() async {
     try {
       final r = await Process.run('flutter', ['--version']);

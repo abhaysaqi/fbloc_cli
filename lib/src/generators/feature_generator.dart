@@ -9,13 +9,12 @@ import 'view_generator.dart';
 class FeatureGenerator {
   static Future<void> generateFeature(String featureName,
       {String? projectPath, CliConfig? config}) async {
-    print('🔧 Generating feature: $featureName');
+    print('Generating feature: $featureName');
 
     // Load config if not provided
     config ??= await ConfigUtils.loadConfig(projectPath);
     if (config == null) {
-      print(
-          '⚠️  Warning: No project configuration found. Using default settings.');
+      print('Warning: No project configuration found. Using default settings.');
       config = CliConfig(
         networkPackage: 'http',
         stateManagement: 'bloc',
@@ -36,7 +35,7 @@ class FeatureGenerator {
 
     // Check if feature already exists
     if (await Directory(basePath).exists()) {
-      print('❌ Error: Feature $featureName already exists');
+      print('Error: Feature $featureName already exists');
       return;
     }
 
@@ -85,13 +84,13 @@ class FeatureGenerator {
       await _generateHomeComponents(basePath, projectPath);
     }
 
-    print('✅ Feature $featureName generated successfully!');
+    print('Feature $featureName generated successfully!');
   }
 
   // NEW: Auth feature generation
   static Future<void> _generateAuthFeature(
       String? projectPath, CliConfig config) async {
-    print('🔐 Generating Auth feature with all screens...');
+    print('Generating Auth feature with all screens...');
 
     final basePath = projectPath != null
         ? path.join(projectPath, 'lib', 'app', 'features', 'auth')
@@ -99,7 +98,7 @@ class FeatureGenerator {
 
     // Check if auth feature already exists
     if (await Directory(basePath).exists()) {
-      print('❌ Error: Auth feature already exists');
+      print('Error: Auth feature already exists');
       return;
     }
 
@@ -120,7 +119,6 @@ class FeatureGenerator {
     }
 
     // Generate models
-    print('  📦 Generating models...');
     await FileUtils.writeFile(
       path.join(basePath, 'model', 'user_model.dart'),
       TemplateUtils.getUserModelTemplate(config),
@@ -131,7 +129,6 @@ class FeatureGenerator {
     );
 
     // Generate repository
-    print('  📦 Generating repository...');
     await FileUtils.writeFile(
       path.join(basePath, 'repository', 'auth_repository.dart'),
       TemplateUtils.getAuthRepositoryTemplate(),
@@ -142,7 +139,6 @@ class FeatureGenerator {
     );
 
     // Generate BLoC or Cubit
-    print('  📦 Generating ${isBloc ? 'BLoC' : 'Cubit'}...');
     if (isBloc) {
       await FileUtils.writeFile(
         path.join(basePath, 'bloc', 'auth_event.dart'),
@@ -168,7 +164,6 @@ class FeatureGenerator {
     }
 
     // Generate screens
-    print('  📱 Generating screens...');
     await FileUtils.writeFile(
       path.join(basePath, 'view', 'screens', 'sign_in_screen.dart'),
       TemplateUtils.getSignInScreenTemplate(config),
@@ -191,7 +186,6 @@ class FeatureGenerator {
     );
 
     // Generate components
-    print('  🧩 Generating components...');
     await FileUtils.writeFile(
       path.join(basePath, 'view', 'components', 'auth_text_field.dart'),
       TemplateUtils.getAuthTextFieldTemplate(),
@@ -205,8 +199,7 @@ class FeatureGenerator {
       TemplateUtils.getOtpInputFieldTemplate(),
     );
 
-    print('✅ Auth feature generated successfully with 5 screens!');
-    print('  📱 Screens: SignIn, SignUp, ForgotPassword, OTP, ResetPassword');
+    print('Auth feature generated successfully with 5 screens!');
   }
 
   static Future<void> _generateBlocFiles(
