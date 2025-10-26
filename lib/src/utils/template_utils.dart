@@ -2207,7 +2207,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.forgotPassword);' : 'Navigator.of(context).pushNamed(RouteNames.forgotPassword)'},
+                        onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.forgotPassword)' : 'Navigator.of(context).pushNamed(RouteNames.forgotPassword)'},
                         child: const Text('Forgot Password?'),
                       ),
                     ),
@@ -2222,7 +2222,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       children: [
                         const Text("Don't have account? "),
                         TextButton(
-                          onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.signUp);' : 'Navigator.of(context).pushNamed(RouteNames.signUp)'},
+                          onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.signUp)' : 'Navigator.of(context).pushNamed(RouteNames.signUp)'},
                           child: const Text('Sign Up'),
                         ),
                       ],
@@ -2379,6 +2379,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../cubit/auth_cubit_state.dart';"}
