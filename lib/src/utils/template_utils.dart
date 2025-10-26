@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../models/cli_config.dart';
 import 'file_utils.dart';
 // all templates files
@@ -169,22 +171,24 @@ class AppColors {
 ''';
   }
 
-  static String getApiEndpointsTemplate() {
+// Auth-specific API Endpoints (add to existing getApiEndpointsTemplate)
+  static String getApiEndpointsTemplate(CliConfig config) {
     return '''
 class ApiEndpoints {
-  // Base URL from environment
-  static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'https://reqres.in/api');
-
-  // 🏠 Home Endpoints
-  static const String homes = "\$baseUrl/users";
-  static String homeById(String id) => "\$baseUrl/users/\$id";
-
-  // 👤 Auth Endpoints
-  static const String login = "\$baseUrl/login";
-  static const String register = "\$baseUrl/register";
-
-  // 📰 Example extra endpoint (if you add more features later)
-  static const String categories = "\$baseUrl/categories";
+  static const String baseUrl = 'https://api.example.com';
+  
+  // Home endpoints
+  static const String homes = '/homes';
+  static String homeById(String id) => '/homes/\$id';
+  
+  // Auth endpoints
+  static const String login = '/auth/login';
+  static const String register = '/auth/register';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String verifyOtp = '/auth/verify-otp';
+  static const String resetPassword = '/auth/reset-password';
+  static const String refreshToken = '/auth/refresh-token';
+  static const String profile = '/auth/profile';
 }
 ''';
   }
@@ -311,42 +315,38 @@ class AppStyles {
     return '''
 class ApiResponse<T> {
   final bool success;
-  final String message;
   final T? data;
+  final String? message;
   final int? statusCode;
 
-  ApiResponse({
+  const ApiResponse._({
     required this.success,
-    required this.message,
     this.data,
+    this.message,
     this.statusCode,
   });
 
-  factory ApiResponse.fromJson(
-    Map<String, dynamic> json,
-    T Function(dynamic)? fromJsonT,
-  ) {
-    return ApiResponse<T>(
-      success: json['success'] as bool? ?? true,
-      message: json['message'] as String? ?? '',
-      data: fromJsonT != null && json['data'] != null 
-          ? fromJsonT(json['data']) 
-          : null,
-      statusCode: json['status_code'] as int?,
-    );
-  }
-
-  factory ApiResponse.success(T data, {String message = 'Success'}) {
-    return ApiResponse<T>(
+  factory ApiResponse.success({
+    T? data,
+    String? message,
+    int? statusCode,
+  }) {
+    return ApiResponse._(
       success: true,
-      message: message,
       data: data,
+      message: message,
+      statusCode: statusCode,
     );
   }
 
-  factory ApiResponse.error(String message, {int? statusCode}) {
-    return ApiResponse<T>(
+  factory ApiResponse.error({
+    String? message,
+    int? statusCode,
+    T? data,
+  }) {
+    return ApiResponse._(
       success: false,
+      data: data,
       message: message,
       statusCode: statusCode,
     );
@@ -356,6 +356,109 @@ class ApiResponse<T> {
   }
 
   // API Service Template
+//   static String getApiServiceTemplate(CliConfig config) {
+//     if (config.networkPackage == 'dio') {
+//       return '''
+// import 'package:dio/dio.dart';
+// import '../utils/constants.dart';
+// import '../utils/api_response.dart';
+// import 'api_endpoints.dart';
+
+// class ApiService {
+//   static final ApiService _instance = ApiService._internal();
+//   factory ApiService() => _instance;
+//   ApiService._internal() {
+//     _dio = Dio(BaseOptions(
+//       baseUrl: ApiEndpoints.baseUrl,
+//       connectTimeout: AppConstants.timeoutDuration,
+//       receiveTimeout: AppConstants.timeoutDuration,
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': 'Bearer \${AppConstants.apiKey}',
+//       },
+//     ));
+//   }
+
+//   late final Dio _dio;
+
+//   Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await _dio.get(endpoint);
+//       return ApiResponse.fromJson(response.data, fromJson);
+//     } on DioException catch (e) {
+//       return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+//     }
+//   }
+
+//   Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await _dio.post(endpoint, data: data);
+//       return ApiResponse.fromJson(response.data, fromJson);
+//     } on DioException catch (e) {
+//       return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+//     }
+//   }
+// }
+// ''';
+//     } else {
+//       return '''
+// import 'dart:convert';
+// import 'package:http/http.dart' as http;
+// import '../utils/constants.dart';
+// import '../utils/api_response.dart';
+// import 'api_endpoints.dart';
+
+// class ApiService {
+//   static final ApiService _instance = ApiService._internal();
+//   factory ApiService() => _instance;
+//   ApiService._internal();
+
+//   Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await http.get(
+//         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': 'Bearer \${AppConstants.apiKey}',
+//         },
+//       ).timeout(AppConstants.timeoutDuration);
+
+//       return _handleResponse<T>(response, fromJson);
+//     } catch (e) {
+//       return ApiResponse.error('Network error: \$e');
+//     }
+//   }
+
+//   Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await http.post(
+//         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': 'Bearer \${AppConstants.apiKey}',
+//         },
+//         body: jsonEncode(data),
+//       ).timeout(AppConstants.timeoutDuration);
+
+//       return _handleResponse<T>(response, fromJson);
+//     } catch (e) {
+//       return ApiResponse.error('Network error: \$e');
+//     }
+//   }
+
+//   ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic)? fromJson) {
+//     if (response.statusCode >= 200 && response.statusCode < 300) {
+//       final jsonData = jsonDecode(response.body);
+//       return ApiResponse.fromJson(jsonData, fromJson);
+//     } else {
+//       return ApiResponse.error('HTTP \${response.statusCode}: \${response.body}', statusCode: response.statusCode);
+//     }
+//   }
+// }
+// ''';
+//     }
+//   }
+
   static String getApiServiceTemplate(CliConfig config) {
     if (config.networkPackage == 'dio') {
       return '''
@@ -368,35 +471,123 @@ class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal() {
-    _dio = Dio(BaseOptions(
-      baseUrl: ApiEndpoints.baseUrl,
-      connectTimeout: AppConstants.timeoutDuration,
-      receiveTimeout: AppConstants.timeoutDuration,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer \${AppConstants.apiKey}',
-      },
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: ApiEndpoints.baseUrl,
+        connectTimeout: AppConstants.timeoutDuration,
+        receiveTimeout: AppConstants.timeoutDuration,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer \${AppConstants.apiKey}',
+        },
+      ),
+    );
   }
 
   late final Dio _dio;
 
-  Future<ApiResponse<T>> get<T>(String endpoint, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> get<T>({
+    required String endpoint,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await _dio.get(endpoint);
-      return ApiResponse.fromJson(response.data, fromJson);
+      final res = await _dio.get(
+        endpoint,
+        queryParameters: query,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
-      return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
     }
   }
 
-  Future<ApiResponse<T>> post<T>(String endpoint, Map<String, dynamic> data, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> post<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await _dio.post(endpoint, data: data);
-      return ApiResponse.fromJson(response.data, fromJson);
+      final res = await _dio.post(
+        endpoint,
+        data: data,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
-      return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
     }
+  }
+
+  Future<ApiResponse<T>> put<T>({
+    required String endpoint, 
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.put(
+        endpoint,
+        data: data,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse<T>> delete<T>({
+    required String endpoint,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.delete(
+        endpoint,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  ApiResponse<T> _wrapDioResponse<T>(Response res, T Function(dynamic)? fromJson) {
+    final ok = res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300;
+    if (ok) {
+      final raw = res.data;
+      final parsed = fromJson != null ? fromJson(raw) : raw as T;
+      return ApiResponse.success(
+        data: parsed,
+        message: res.statusMessage,
+        statusCode: res.statusCode,
+      );
+    }
+    return ApiResponse.error(
+      message: res.statusMessage,
+      statusCode: res.statusCode,
+      data: res.data,
+    );
   }
 }
 ''';
@@ -413,46 +604,106 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  Future<ApiResponse<T>> get<T>(String endpoint, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> get<T>({
+    required String endpoint,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await http.get(
-        Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer \${AppConstants.apiKey}',
-        },
-      ).timeout(AppConstants.timeoutDuration);
-
-      return _handleResponse<T>(response, fromJson);
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint').replace(queryParameters: query);
+      final res = await http
+          .get(uri, headers: _buildHeaders(headers))
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
     } catch (e) {
-      return ApiResponse.error('Network error: \$e');
+      return ApiResponse.error(message: 'Network error: \$e');
     }
   }
 
-  Future<ApiResponse<T>> post<T>(String endpoint, Map<String, dynamic> data, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> post<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer \${AppConstants.apiKey}',
-        },
-        body: jsonEncode(data),
-      ).timeout(AppConstants.timeoutDuration);
-
-      return _handleResponse<T>(response, fromJson);
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint');
+      final res = await http
+          .post(
+            uri,
+            headers: _buildHeaders(headers),
+            body: data == null ? null : jsonEncode(data),
+          )
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
     } catch (e) {
-      return ApiResponse.error('Network error: \$e');
+      return ApiResponse.error(message: 'Network error: \$e');
     }
   }
 
-  ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic)? fromJson) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final jsonData = jsonDecode(response.body);
-      return ApiResponse.fromJson(jsonData, fromJson);
-    } else {
-      return ApiResponse.error('HTTP \${response.statusCode}: \${response.body}', statusCode: response.statusCode);
+  Future<ApiResponse<T>> put<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint');
+      final res = await http
+          .put(
+            uri,
+            headers: _buildHeaders(headers),
+            body: data == null ? null : jsonEncode(data),
+          )
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
+    } catch (e) {
+      return ApiResponse.error(message: 'Network error: \$e');
     }
+  }
+
+  Future<ApiResponse<T>> delete<T>({
+    required String endpoint,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint');
+      final res = await http
+          .delete(uri, headers: _buildHeaders(headers))
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
+    } catch (e) {
+      return ApiResponse.error(message: 'Network error: \$e');
+    }
+  }
+
+  Map<String, String> _buildHeaders(Map<String, String>? override) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer \${AppConstants.apiKey}',
+      if (override != null) ...override,
+    };
+  }
+
+  ApiResponse<T> _handleHttpResponse<T>(http.Response res, T Function(dynamic)? fromJson) {
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (ok) {
+      final body = res.body.isEmpty ? null : jsonDecode(res.body);
+      final parsed = fromJson != null ? fromJson(body) : body as T;
+      return ApiResponse.success(
+        data: parsed,
+        message: res.reasonPhrase,
+        statusCode: res.statusCode,
+      );
+    }
+    final body = res.body.isEmpty ? null : jsonDecode(res.body);
+    return ApiResponse.error(
+      message: res.reasonPhrase ?? 'HTTP \${res.statusCode}',
+      statusCode: res.statusCode,
+      data: body,
+    );
   }
 }
 ''';
@@ -461,65 +712,173 @@ class ApiService {
 
   // Routes Templates
   static String getAppRoutesTemplate(CliConfig config) {
-    if (config.navigation == 'go_router') {
-      return '''
+  if (config.navigation == 'go_router') {
+    return '''
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+// Screens
 import '../features/home/view/home_screen.dart';
+import '../features/auth/view/screens/sign_in_screen.dart';
+import '../features/auth/view/screens/sign_up_screen.dart';
+import '../features/auth/view/screens/forgot_password_screen.dart';
+import '../features/auth/view/screens/otp_screen.dart';
+import '../features/auth/view/screens/reset_password_screen.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/sign-in',
   routes: <RouteBase>[
+    // Auth flow
     GoRoute(
-      path: '/',
+      path: '/sign-in',
+      builder: (BuildContext context, GoRouterState state) => const SignInScreen(),
+    ),
+    GoRoute(
+      path: '/sign-up',
+      builder: (BuildContext context, GoRouterState state) => const SignUpScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (BuildContext context, GoRouterState state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/otp-verify',
       builder: (BuildContext context, GoRouterState state) {
-        return const HomeScreen();
+        final email = state.extra is String ? state.extra as String : '';
+        return OtpScreen(email: email);
       },
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (BuildContext context, GoRouterState state) {
+        final args = (state.extra as Map?) ?? const {};
+        final email = (args['email'] as String?) ?? '';
+        final otp = (args['otp'] as String?) ?? '';
+        return ResetPasswordScreen(email: email, otp: otp);
+      },
+    ),
+
+    // App (post-auth)
+    GoRoute(
+      path: '/home',
+      builder: (BuildContext context, GoRouterState state) => const HomeScreen(),
     ),
   ],
 );
 ''';
-    } else {
-      return '''
+  } else {
+    return '''
 import 'package:flutter/material.dart';
+
+// Screens
 import '../features/home/view/home_screen.dart';
+import '../features/auth/view/screens/sign_in_screen.dart';
+import '../features/auth/view/screens/sign_up_screen.dart';
+import '../features/auth/view/screens/forgot_password_screen.dart';
+import '../features/auth/view/screens/otp_screen.dart';
+import '../features/auth/view/screens/reset_password_screen.dart';
 import 'route_names.dart';
 
 class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      // Auth flow
+      case RouteNames.signIn:
+        return MaterialPageRoute(builder: (_) => const SignInScreen());
+      case RouteNames.signUp:
+        return MaterialPageRoute(builder: (_) => const SignUpScreen());
+      case RouteNames.forgotPassword:
+        return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
+      case RouteNames.otpVerify: {
+        final email = (settings.arguments as String?) ?? '';
+        return MaterialPageRoute(builder: (_) => OtpScreen(email: email));
+      }
+      case RouteNames.resetPassword: {
+        final args = (settings.arguments as Map?) ?? const {};
+        final email = (args['email'] as String?) ?? '';
+        final otp = (args['otp'] as String?) ?? '';
+        return MaterialPageRoute(builder: (_) => ResetPasswordScreen(email: email, otp: otp));
+      }
+
+      // App (post-auth)
       case RouteNames.home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
+
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('Page not found'),
-            ),
+            body: Center(child: Text('Page not found')),
           ),
         );
     }
   }
 }
 ''';
-    }
   }
+}
+
+//   static String getAppRoutesTemplate(CliConfig config) {
+//     if (config.navigation == 'go_router') {
+//       return '''
+// import 'package:flutter/material.dart';
+// import 'package:go_router/go_router.dart';
+// import '../features/home/view/home_screen.dart';
+
+// final GoRouter router = GoRouter(
+//   initialLocation: '/',
+//   routes: <RouteBase>[
+//     GoRoute(
+//       path: '/',
+//       builder: (BuildContext context, GoRouterState state) {
+//         return const HomeScreen();
+//       },
+//     ),
+//   ],
+// );
+// ''';
+//     } else {
+//       return '''
+// import 'package:flutter/material.dart';
+// import '../features/home/view/home_screen.dart';
+// import 'route_names.dart';
+
+// class AppRoutes {
+//   static Route<dynamic> generateRoute(RouteSettings settings) {
+//     switch (settings.name) {
+//       case RouteNames.home:
+//         return MaterialPageRoute(builder: (_) => const HomeScreen());
+//       default:
+//         return MaterialPageRoute(
+//           builder: (_) => const Scaffold(
+//             body: Center(
+//               child: Text('Page not found'),
+//             ),
+//           ),
+//         );
+//     }
+//   }
+// }
+// ''';
+//     }
+//   }
 
   static String getRouteNamesTemplate() {
     return '''
 class RouteNames {
-  static const String home = '/';
-  static const String login = '/login';
-  static const String profile = '/profile';
+  static const String home = '/home';
+  static const String signIn = '/sign-in';
+  static const String signUp = '/sign-up';  
+  static const String forgotPassword = '/forgot-password';
+  static const String otpVerify = '/otp-verify';
+  static const String resetPassword = '/reset-password';
 }
+
 ''';
   }
 
   // Feature Templates
   static String getBlocTemplate(String featureName, CliConfig config) {
     final pascalName = FileUtils.toPascalCase(featureName);
-    final equatableImport =
-        config.useEquatable ? "import 'package:equatable/equatable.dart';" : '';
 
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -555,7 +914,7 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
         _currentPage++;
         emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        emit(${pascalName}Error(response.message));
+        emit(${pascalName}Error(response.message?? 'Failed'));
       }
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
@@ -577,7 +936,7 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
         }
         emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        emit(${pascalName}Error(response.message));
+        emit(${pascalName}Error(response.message?? 'Failed'));
       }
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
@@ -690,10 +1049,10 @@ class ${pascalName}Cubit extends Cubit<${pascalName}State> {
         }
         emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        emit(${pascalName}Error(response.message));
+        emit(${pascalName}Error(response.message?? 'Failed'));
       }
     } catch (e) {
-      emit(${pascalName}Error('Failed to load data'));
+      emit(${pascalName}Error('Failed to load data: ${e.toString()}'));
     }
     _isLoading = false;
   }
@@ -775,8 +1134,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
     final response = await _apiService.get<List<${pascalName}Model>>(
-      '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
-      (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
+      endpoint: '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
+      fromJson: (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
     );
     return response;
   }
@@ -784,8 +1143,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
     final response = await _apiService.get<${pascalName}Model>(
-      ApiEndpoints.${featureName}ById(id),
-      (data) => ${pascalName}Model.fromJson(data),
+      endpoint: ApiEndpoints.${featureName}ById(id),
+      fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
     return response;
   }
@@ -793,9 +1152,9 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
     final response = await _apiService.post<${pascalName}Model>(
-      ApiEndpoints.${featureName}s,
-      $featureName.toJson(),
-      (data) => ${pascalName}Model.fromJson(data),
+      endpoint: ApiEndpoints.${featureName}s,
+      data: $featureName.toJson(),
+      fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
     return response;
   }
@@ -803,9 +1162,9 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
     final response = await _apiService.post<${pascalName}Model>(
-      ApiEndpoints.${featureName}ById($featureName.id),
-      $featureName.toJson(),
-      (data) => ${pascalName}Model.fromJson(data),
+      endpoint: ApiEndpoints.${featureName}ById($featureName.id),
+      data: $featureName.toJson(),
+      fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
     return response;
   }
@@ -813,8 +1172,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<void>> delete$pascalName(String id) async {
     final response = await _apiService.get<void>(
-      ApiEndpoints.${featureName}ById(id),
-      null,
+      endpoint: ApiEndpoints.${featureName}ById(id),
+      fromJson: null,
     );
     return response;
   }
@@ -1246,6 +1605,1189 @@ class AppDrawer extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+''';
+  }
+
+  // ============ AUTH MODELS ============
+
+  static String getUserModelTemplate(CliConfig config) {
+    final useEquatable = config.useEquatable;
+    return '''
+${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+
+class UserModel${useEquatable ? ' extends Equatable' : ''} {
+  final String id;
+  final String name;
+  final String email;
+  final String? photoUrl;
+  final DateTime? createdAt;
+
+  const UserModel({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.photoUrl,
+    this.createdAt,
+  });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      photoUrl: json['photoUrl'],
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'photoUrl': photoUrl,
+    'createdAt': createdAt?.toIso8601String(),
+  };
+
+  UserModel copyWith({String? id, String? name, String? email, String? photoUrl, DateTime? createdAt}) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+${useEquatable ? '  @override\n  List<Object?> get props => [id, name, email, photoUrl, createdAt];' : ''}
+}
+''';
+  }
+
+  static String getAuthTokensModelTemplate(CliConfig config) {
+    final useEquatable = config.useEquatable;
+    return '''
+${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+
+class AuthTokens${useEquatable ? ' extends Equatable' : ''} {
+  final String accessToken;
+  final String refreshToken;
+  final DateTime? expiresAt;
+
+  const AuthTokens({
+    required this.accessToken,
+    required this.refreshToken,
+    this.expiresAt,
+  });
+
+  factory AuthTokens.fromJson(Map<String, dynamic> json) {
+    return AuthTokens(
+      accessToken: json['accessToken'] ?? json['access_token'] ?? '',
+      refreshToken: json['refreshToken'] ?? json['refresh_token'] ?? '',
+      expiresAt: json['expiresAt'] != null ? DateTime.parse(json['expiresAt']) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+    'expiresAt': expiresAt?.toIso8601String(),
+  };
+
+${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refreshToken, expiresAt];' : ''}
+}
+''';
+  }
+
+// ============ AUTH REPOSITORY ============
+
+  static String getAuthRepositoryTemplate() {
+    return '''
+import '../../../core/utils/api_response.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
+
+abstract class AuthRepository {
+  Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
+  Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password});
+  Future<ApiResponse<String>> requestPasswordReset(String email);
+  Future<ApiResponse<String>> verifyOtp({required String email, required String otp});
+  Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword});
+  Future<ApiResponse<UserModel>> getCurrentUser();
+  Future<void> logout();
+}
+''';
+  }
+
+  static String getAuthRepositoryImplTemplate(CliConfig config) {
+    return '''
+import '../../../core/service/api_endpoints.dart';
+import '../../../core/utils/api_response.dart';
+import '../../../core/service/api_service.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
+import './auth_repository.dart';
+
+class AuthRepositoryImpl implements AuthRepository {
+  final ApiService _apiService;
+
+  AuthRepositoryImpl(this._apiService);
+
+  @override
+  Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
+    try {
+      final response = await _apiService.post(endpoint: ApiEndpoints.login, data: {'email': email, 'password': password});
+      if (response.success && response.data != null) {
+        return ApiResponse.success(data: AuthTokens.fromJson(response.data));
+      }
+      return ApiResponse.error(message: response.message);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
+    try {
+      final response = await _apiService.post(endpoint: ApiEndpoints.register, data: {'name': name, 'email': email, 'password': password});
+      if (response.success && response.data != null) {
+        return ApiResponse.success(data: AuthTokens.fromJson(response.data));
+      }
+      return ApiResponse.error(message: response.message);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<String>> requestPasswordReset(String email) async {
+    try {
+      final response = await _apiService.post(endpoint: ApiEndpoints.forgotPassword, data: {'email': email});
+      return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
+    try {
+      final response = await _apiService.post(endpoint: ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
+      return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
+    try {
+      final response = await _apiService.post(endpoint: ApiEndpoints.resetPassword, data: {'email': email, 'otp': otp, 'newPassword': newPassword});
+      return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<UserModel>> getCurrentUser() async {
+    try {
+      final response = await _apiService.get(endpoint: ApiEndpoints.profile);
+      if (response.success && response.data != null) {
+        return ApiResponse.success(data: UserModel.fromJson(response.data));
+      }
+      return ApiResponse.error(message: response.message);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    // Clear stored tokens
+  }
+}
+''';
+  }
+
+// ============ AUTH BLOC/CUBIT ============
+
+  static String getAuthBlocEventTemplate(CliConfig config) {
+    final useEquatable = config.useEquatable;
+    return '''
+${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+
+abstract class AuthEvent${useEquatable ? ' extends Equatable' : ''} {
+  const AuthEvent();
+${useEquatable ? '  @override\n  List<Object?> get props => [];' : ''}
+}
+
+class SignInEmailRequested extends AuthEvent {
+  final String email;
+  final String password;
+  const SignInEmailRequested({required this.email, required this.password});
+${useEquatable ? '  @override\n  List<Object?> get props => [email, password];' : ''}
+}
+
+class SignUpEmailRequested extends AuthEvent {
+  final String name;
+  final String email;
+  final String password;
+  const SignUpEmailRequested({required this.name, required this.email, required this.password});
+${useEquatable ? '  @override\n  List<Object?> get props => [name, email, password];' : ''}
+}
+
+class ForgotPasswordRequested extends AuthEvent {
+  final String email;
+  const ForgotPasswordRequested(this.email);
+${useEquatable ? '  @override\n  List<Object?> get props => [email];' : ''}
+}
+
+class OtpVerifyRequested extends AuthEvent {
+  final String email;
+  final String otp;
+  const OtpVerifyRequested({required this.email, required this.otp});
+${useEquatable ? '  @override\n  List<Object?> get props => [email, otp];' : ''}
+}
+
+class ResetPasswordRequested extends AuthEvent {
+  final String email;
+  final String otp;
+  final String newPassword;
+  const ResetPasswordRequested({required this.email, required this.otp, required this.newPassword});
+${useEquatable ? '  @override\n  List<Object?> get props => [email, otp, newPassword];' : ''}
+}
+
+class LogoutRequested extends AuthEvent {
+  const LogoutRequested();
+}
+
+class GetCurrentUserRequested extends AuthEvent {
+  const GetCurrentUserRequested();
+}
+''';
+  }
+
+  static String getAuthBlocStateTemplate(CliConfig config) {
+    final useEquatable = config.useEquatable;
+    return '''
+${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+import '../model/user_model.dart';
+
+abstract class AuthState${useEquatable ? ' extends Equatable' : ''} {
+  const AuthState();
+${useEquatable ? '  @override\n  List<Object?> get props => [];' : ''}
+}
+
+class AuthInitial extends AuthState {
+  const AuthInitial();
+}
+
+class AuthLoading extends AuthState {
+  const AuthLoading();
+}
+
+class AuthAuthenticated extends AuthState {
+  final UserModel? user;
+  const AuthAuthenticated({this.user});
+${useEquatable ? '  @override\n  List<Object?> get props => [user];' : ''}
+}
+
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated();
+}
+
+class AuthError extends AuthState {
+  final String message;
+  const AuthError(this.message);
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+}
+
+class PasswordResetEmailSent extends AuthState {
+  final String message;
+  const PasswordResetEmailSent(this.message);
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+}
+
+class OtpVerified extends AuthState {
+  final String message;
+  const OtpVerified(this.message);
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+}
+
+class PasswordResetSuccess extends AuthState {
+  final String message;
+  const PasswordResetSuccess(this.message);
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+}
+''';
+  }
+
+  static String getAuthBlocTemplate(CliConfig config) {
+    return '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../repository/auth_repository.dart';
+import 'auth_event.dart';
+import 'auth_state.dart';
+
+class AuthBloc extends Bloc<AuthEvent, AuthState> {
+  final AuthRepository _repository;
+
+  AuthBloc(this._repository) : super(const AuthInitial()) {
+    on<SignInEmailRequested>(_onSignInEmailRequested);
+    on<SignUpEmailRequested>(_onSignUpEmailRequested);
+    on<ForgotPasswordRequested>(_onForgotPasswordRequested);
+    on<OtpVerifyRequested>(_onOtpVerifyRequested);
+    on<ResetPasswordRequested>(_onResetPasswordRequested);
+    on<LogoutRequested>(_onLogoutRequested);
+    on<GetCurrentUserRequested>(_onGetCurrentUserRequested);
+  }
+
+  Future<void> _onSignInEmailRequested(SignInEmailRequested event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+    final response = await _repository.signInWithEmail(email: event.email, password: event.password);
+    if (response.success) {
+      final userResponse = await _repository.getCurrentUser();
+      emit(AuthAuthenticated(user: userResponse.data));
+    } else {
+      emit(AuthError(response.message ?? 'Sign in failed'));
+    }
+  }
+
+  Future<void> _onSignUpEmailRequested(SignUpEmailRequested event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+    final response = await _repository.signUpWithEmail(name: event.name, email: event.email, password: event.password);
+    if (response.success) {
+      final userResponse = await _repository.getCurrentUser();
+      emit(AuthAuthenticated(user: userResponse.data));
+    } else {
+      emit(AuthError(response.message ?? 'Sign up failed'));
+    }
+  }
+
+  Future<void> _onForgotPasswordRequested(ForgotPasswordRequested event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+    final response = await _repository.requestPasswordReset(event.email);
+    emit(response.success ? PasswordResetEmailSent(response.data ?? 'OTP sent') : AuthError(response.message ?? 'Failed'));
+  }
+
+  Future<void> _onOtpVerifyRequested(OtpVerifyRequested event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+    final response = await _repository.verifyOtp(email: event.email, otp: event.otp);
+    emit(response.success ? OtpVerified(response.data ?? 'Verified') : AuthError(response.message ?? 'Failed'));
+  }
+
+  Future<void> _onResetPasswordRequested(ResetPasswordRequested event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+    final response = await _repository.resetPassword(email: event.email, otp: event.otp, newPassword: event.newPassword);
+    emit(response.success ? PasswordResetSuccess(response.data ?? 'Success') : AuthError(response.message ?? 'Failed'));
+  }
+
+  Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
+    await _repository.logout();
+    emit(const AuthUnauthenticated());
+  }
+
+  Future<void> _onGetCurrentUserRequested(GetCurrentUserRequested event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+    final response = await _repository.getCurrentUser();
+    emit(response.success && response.data != null ? AuthAuthenticated(user: response.data) : const AuthUnauthenticated());
+  }
+}
+''';
+  }
+
+  static String getAuthCubitStateTemplate(CliConfig config) {
+    final useEquatable = config.useEquatable;
+    return '''
+${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
+import '../model/user_model.dart';
+
+class AuthCubitState${useEquatable ? ' extends Equatable' : ''} {
+  final bool isLoading;
+  final bool isAuthenticated;
+  final UserModel? user;
+  final String? error;
+  final String? message;
+
+  const AuthCubitState({
+    this.isLoading = false,
+    this.isAuthenticated = false,
+    this.user,
+    this.error,
+    this.message,
+  });
+
+  AuthCubitState copyWith({bool? isLoading, bool? isAuthenticated, UserModel? user, String? error, String? message}) {
+    return AuthCubitState(
+      isLoading: isLoading ?? this.isLoading,
+      isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      user: user ?? this.user,
+      error: error,
+      message: message,
+    );
+  }
+
+${useEquatable ? '  @override\n  List<Object?> get props => [isLoading, isAuthenticated, user, error, message];' : ''}
+}
+''';
+  }
+
+  static String getAuthCubitTemplate(CliConfig config) {
+    return '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../repository/auth_repository.dart';
+import 'auth_cubit_state.dart';
+
+class AuthCubit extends Cubit<AuthCubitState> {
+  final AuthRepository _repository;
+
+  AuthCubit(this._repository) : super(const AuthCubitState());
+
+  Future<void> signInWithEmail({required String email, required String password}) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    final response = await _repository.signInWithEmail(email: email, password: password);
+    if (response.success) {
+      final userResponse = await _repository.getCurrentUser();
+      emit(state.copyWith(isLoading: false, isAuthenticated: true, user: userResponse.data));
+    } else {
+      emit(state.copyWith(isLoading: false, error: response.message ?? 'Failed'));
+    }
+  }
+
+  Future<void> signUpWithEmail({required String name, required String email, required String password}) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    final response = await _repository.signUpWithEmail(name: name, email: email, password: password);
+    if (response.success) {
+      final userResponse = await _repository.getCurrentUser();
+      emit(state.copyWith(isLoading: false, isAuthenticated: true, user: userResponse.data));
+    } else {
+      emit(state.copyWith(isLoading: false, error: response.message ?? 'Failed'));
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    emit(state.copyWith(isLoading: true, error: null, message: null));
+    final response = await _repository.requestPasswordReset(email);
+    emit(state.copyWith(isLoading: false, message: response.success ? response.data : null, error: response.success ? null : response.message));
+  }
+
+  Future<void> verifyOtp({required String email, required String otp}) async {
+    emit(state.copyWith(isLoading: true, error: null, message: null));
+    final response = await _repository.verifyOtp(email: email, otp: otp);
+    emit(state.copyWith(isLoading: false, message: response.success ? response.data : null, error: response.success ? null : response.message));
+  }
+
+  Future<void> resetPassword({required String email, required String otp, required String newPassword}) async {
+    emit(state.copyWith(isLoading: true, error: null, message: null));
+    final response = await _repository.resetPassword(email: email, otp: otp, newPassword: newPassword);
+    emit(state.copyWith(isLoading: false, message: response.success ? response.data : null, error: response.success ? null : response.message));
+  }
+
+  Future<void> logout() async {
+    await _repository.logout();
+    emit(const AuthCubitState());
+  }
+
+  Future<void> getCurrentUser() async {
+    emit(state.copyWith(isLoading: true, error: null));
+    final response = await _repository.getCurrentUser();
+    emit(state.copyWith(isLoading: false, isAuthenticated: response.success, user: response.data));
+  }
+}
+''';
+  }
+
+// ============ AUTH SCREENS ============
+
+  static String getSignInScreenTemplate(CliConfig config) {
+    final isBloc = config.stateManagement == 'bloc';
+    return '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../routes/route_names.dart';
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
+import '../components/auth_text_field.dart';
+import '../components/password_field.dart';
+
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
+
+  @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleSignIn() {
+    if (_formKey.currentState?.validate() ?? false) {
+      ${isBloc ? 'context.read<AuthBloc>().add(SignInEmailRequested(email: _emailController.text.trim(), password: _passwordController.text));' : 'context.read<AuthCubit>().signInWithEmail(email: _emailController.text.trim(), password: _passwordController.text);'}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ${isBloc ? 'BlocConsumer<AuthBloc, AuthState>' : 'BlocConsumer<AuthCubit, AuthCubitState>'}(
+        listener: (context, state) {
+          ${isBloc ? '''if (state is AuthAuthenticated) {
+            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          }''' : '''if (state.isAuthenticated) {
+            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
+          }'''}
+        },
+        builder: (context, state) {
+          ${isBloc ? 'final isLoading = state is AuthLoading;' : 'final isLoading = state.isLoading;'}
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Welcome Back', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+                    const SizedBox(height: 40),
+                    AuthTextField(
+                      controller: _emailController,
+                      label: 'Email',
+                      hintText: 'Enter email',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : !v.contains('@') ? 'Invalid email' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    PasswordField(
+                      controller: _passwordController,
+                      label: 'Password',
+                      hintText: 'Enter password',
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : v.length < 6 ? 'Min 6 chars' : null,
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: isLoading ? null : () => Navigator.of(context).pushNamed(RouteNames.forgotPassword),
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: isLoading ? null : _handleSignIn,
+                      child: isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Sign In'),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text("Don't have account? "),
+                        TextButton(
+                          onPressed: isLoading ? null : () => Navigator.of(context).pushNamed(RouteNames.signUp),
+                          child: const Text('Sign Up'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+''';
+  }
+
+  static String getSignUpScreenTemplate(CliConfig config) {
+    final isBloc = config.stateManagement == 'bloc';
+    return '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../routes/route_names.dart';
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
+import '../components/auth_text_field.dart';
+import '../components/password_field.dart';
+
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _handleSignUp() {
+    if (_formKey.currentState?.validate() ?? false) {
+      ${isBloc ? "context.read<AuthBloc>().add(SignUpEmailRequested(name: _nameController.text.trim(), email: _emailController.text.trim(), password: _passwordController.text));" : "context.read<AuthCubit>().signUpWithEmail(name: _nameController.text.trim(), email: _emailController.text.trim(), password: _passwordController.text);"}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ${isBloc ? 'BlocConsumer<AuthBloc, AuthState>' : 'BlocConsumer<AuthCubit, AuthCubitState>'}(
+        listener: (context, state) {
+          ${isBloc ? '''
+          if (state is AuthAuthenticated) {
+            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          }''' : '''
+          if (state.isAuthenticated) {
+            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
+          }'''}
+        },
+        builder: (context, state) {
+          ${isBloc ? 'final isLoading = state is AuthLoading;' : 'final isLoading = state.isLoading;'}
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Create Account', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+                    const SizedBox(height: 40),
+                    AuthTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      hintText: 'Enter your full name',
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    AuthTextField(
+                      controller: _emailController,
+                      label: 'Email',
+                      hintText: 'Enter email',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : !v.contains('@') ? 'Invalid email' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    PasswordField(
+                      controller: _passwordController,
+                      label: 'Password',
+                      hintText: 'Enter password',
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : v.length < 6 ? 'Min 6 chars' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    PasswordField(
+                      controller: _confirmPasswordController,
+                      label: 'Confirm Password',
+                      hintText: 'Re-enter password',
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : v != _passwordController.text ? 'Passwords do not match' : null,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: isLoading ? null : _handleSignUp,
+                      child: isLoading
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Sign Up'),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Already have an account? '),
+                        TextButton(
+                          onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                          child: const Text('Sign In'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+''';
+  }
+
+  static String getForgotPasswordScreenTemplate(CliConfig config) {
+    final isBloc = config.stateManagement == 'bloc';
+    return '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../routes/route_names.dart';
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../cubit/auth_cubit_state.dart';"}
+import '../components/auth_text_field.dart';
+
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
+
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      ${isBloc ? "context.read<AuthBloc>().add(ForgotPasswordRequested(_emailController.text.trim()));" : "context.read<AuthCubit>().forgotPassword(_emailController.text.trim());"}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Forgot Password')),
+      body: ${isBloc ? 'BlocConsumer<AuthBloc, AuthState>' : 'BlocConsumer<AuthCubit, AuthCubitState>'}(
+        listener: (context, state) {
+          ${isBloc ? '''
+          if (state is PasswordResetEmailSent) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            Navigator.of(context).pushNamed(RouteNames.otpVerify, arguments: _emailController.text.trim());
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          }''' : '''
+          if (state.message != null && !state.isLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message!)));
+            Navigator.of(context).pushNamed(RouteNames.otpVerify, arguments: _emailController.text.trim());
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
+          }'''}
+        },
+        builder: (context, state) {
+          ${isBloc ? 'final isLoading = state is AuthLoading;' : 'final isLoading = state.isLoading;'}
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  Icon(Icons.lock_reset, size: 80, color: Theme.of(context).primaryColor),
+                  const SizedBox(height: 24),
+                  Text('Reset Password', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  Text('Enter your email to receive an OTP', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+                  const SizedBox(height: 40),
+                  AuthTextField(
+                    controller: _emailController,
+                    label: 'Email',
+                    hintText: 'Enter your email',
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) => v == null || v.isEmpty ? 'Please enter your email' : !v.contains('@') ? 'Please enter a valid email' : null,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _handleSubmit,
+                    child: isLoading
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Send OTP'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Back to Sign In'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+''';
+  }
+
+  static String getOtpScreenTemplate(CliConfig config) {
+    final isBloc = config.stateManagement == 'bloc';
+    return '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../routes/route_names.dart';
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
+import '../components/otp_input_field.dart';
+
+class OtpScreen extends StatefulWidget {
+  final String email;
+
+  const OtpScreen({super.key, required this.email});
+
+  @override
+  State<OtpScreen> createState() => _OtpScreenState();
+}
+
+class _OtpScreenState extends State<OtpScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _otpController = TextEditingController();
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _handleVerify() {
+    if (_formKey.currentState?.validate() ?? false) {
+      ${isBloc ? "context.read<AuthBloc>().add(OtpVerifyRequested(email: widget.email, otp: _otpController.text.trim()));" : "context.read<AuthCubit>().verifyOtp(email: widget.email, otp: _otpController.text.trim());"}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Verify OTP')),
+      body: ${isBloc ? 'BlocConsumer<AuthBloc, AuthState>' : 'BlocConsumer<AuthCubit, AuthCubitState>'}(
+        listener: (context, state) {
+          ${isBloc ? '''
+          if (state is OtpVerified) {
+            Navigator.of(context).pushReplacementNamed(
+              RouteNames.resetPassword,
+              arguments: {'email': widget.email, 'otp': _otpController.text.trim()},
+            );
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          }''' : '''
+          if (state.message != null && !state.isLoading) {
+            Navigator.of(context).pushReplacementNamed(
+              RouteNames.resetPassword,
+              arguments: {'email': widget.email, 'otp': _otpController.text.trim()},
+            );
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
+          }'''}
+        },
+        builder: (context, state) {
+          ${isBloc ? 'final isLoading = state is AuthLoading;' : 'final isLoading = state.isLoading;'}
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  Icon(Icons.mark_email_read, size: 80, color: Theme.of(context).primaryColor),
+                  const SizedBox(height: 24),
+                  Text('Verify OTP', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  Text('Enter the OTP sent to', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+                  Text(widget.email, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                  const SizedBox(height: 40),
+                  OtpInputField(
+                    controller: _otpController,
+                    length: 6,
+                    validator: (v) => v == null || v.isEmpty ? 'Please enter OTP' : v.length < 6 ? 'Please enter complete OTP' : null,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _handleVerify,
+                    child: isLoading
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Verify OTP'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            ${isBloc ? "context.read<AuthBloc>().add(ForgotPasswordRequested(widget.email));" : "context.read<AuthCubit>().forgotPassword(widget.email);"}
+                          },
+                    child: const Text('Resend OTP'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+''';
+  }
+
+  static String getResetPasswordScreenTemplate(CliConfig config) {
+    final isBloc = config.stateManagement == 'bloc';
+    return '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../routes/route_names.dart';
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
+import '../components/password_field.dart';
+
+class ResetPasswordScreen extends StatefulWidget {
+  final String email;
+  final String otp;
+
+  const ResetPasswordScreen({super.key, required this.email, required this.otp});
+
+  @override
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+}
+
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _handleReset() {
+    if (_formKey.currentState?.validate() ?? false) {
+      ${isBloc ? "context.read<AuthBloc>().add(ResetPasswordRequested(email: widget.email, otp: widget.otp, newPassword: _passwordController.text));" : "context.read<AuthCubit>().resetPassword(email: widget.email, otp: widget.otp, newPassword: _passwordController.text);"}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reset Password')),
+      body: ${isBloc ? 'BlocConsumer<AuthBloc, AuthState>' : 'BlocConsumer<AuthCubit, AuthCubitState>'}(
+        listener: (context, state) {
+          ${isBloc ? '''
+          if (state is PasswordResetSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            Navigator.of(context).pushNamedAndRemoveUntil(RouteNames.signIn, (route) => false);
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+          }''' : '''
+          if (state.message != null && !state.isLoading) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message!)));
+            Navigator.of(context).pushNamedAndRemoveUntil(RouteNames.signIn, (route) => false);
+          } else if (state.error != null) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
+          }'''}
+        },
+        builder: (context, state) {
+          ${isBloc ? 'final isLoading = state is AuthLoading;' : 'final isLoading = state.isLoading;'}
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  Icon(Icons.lock_open, size: 80, color: Theme.of(context).primaryColor),
+                  const SizedBox(height: 24),
+                  Text('Create New Password', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  Text('Enter your new password', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+                  const SizedBox(height: 40),
+                  PasswordField(
+                    controller: _passwordController,
+                    label: 'New Password',
+                    hintText: 'Enter new password',
+                    validator: (v) => v == null || v.isEmpty ? 'Please enter new password' : v.length < 6 ? 'Password must be at least 6 characters' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  PasswordField(
+                    controller: _confirmPasswordController,
+                    label: 'Confirm Password',
+                    hintText: 'Re-enter new password',
+                    validator: (v) => v == null || v.isEmpty ? 'Please confirm your password' : v != _passwordController.text ? 'Passwords do not match' : null,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _handleReset,
+                    child: isLoading
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Reset Password'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+''';
+  }
+
+// ============ AUTH COMPONENTS ============
+
+  static String getAuthTextFieldTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class AuthTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hintText;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+
+  const AuthTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.hintText,
+    this.keyboardType,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            hintText: hintText,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+          validator: validator,
+        ),
+      ],
+    );
+  }
+}
+''';
+  }
+
+  static String getPasswordFieldTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class PasswordField extends StatefulWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hintText;
+  final String? Function(String?)? validator;
+
+  const PasswordField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.hintText,
+    this.validator,
+  });
+
+  @override
+  State<PasswordField> createState() => _PasswordFieldState();
+}
+
+class _PasswordFieldState extends State<PasswordField> {
+  bool _obscureText = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label, style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: widget.controller,
+          obscureText: _obscureText,
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            suffixIcon: IconButton(
+              icon: Icon(_obscureText ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => setState(() => _obscureText = !_obscureText),
+            ),
+          ),
+          validator: widget.validator,
+        ),
+      ],
+    );
+  }
+}
+''';
+  }
+
+  static String getOtpInputFieldTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+class OtpInputField extends StatelessWidget {
+  final TextEditingController controller;
+  final int length;
+  final String? Function(String?)? validator;
+
+  const OtpInputField({super.key, required this.controller, this.length = 6, this.validator});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      textAlign: TextAlign.center,
+      maxLength: length,
+      style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: 8, fontWeight: FontWeight.bold),
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: InputDecoration(
+        counterText: '',
+        hintText: '• ' * length,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      ),
+      validator: validator,
     );
   }
 }
