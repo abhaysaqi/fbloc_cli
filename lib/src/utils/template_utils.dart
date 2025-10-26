@@ -2124,7 +2124,8 @@ class AuthCubit extends Cubit<AuthCubitState> {
   static String getSignInScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
     final isGoRouter = config.navigation == 'go_router';
-    final goRouterImport = isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -2206,7 +2207,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.forgotPassword);' : 'Navigator.of(context).pushNamed(RouteNames.forgotPassword);'},
+                        onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.forgotPassword);' : 'Navigator.of(context).pushNamed(RouteNames.forgotPassword)'},
                         child: const Text('Forgot Password?'),
                       ),
                     ),
@@ -2221,7 +2222,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       children: [
                         const Text("Don't have account? "),
                         TextButton(
-                          onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.signUp);' : 'Navigator.of(context).pushNamed(RouteNames.signUp);'},
+                          onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.signUp);' : 'Navigator.of(context).pushNamed(RouteNames.signUp)'},
                           child: const Text('Sign Up'),
                         ),
                       ],
@@ -2242,7 +2243,8 @@ class _SignInScreenState extends State<SignInScreen> {
   static String getSignUpScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
     final isGoRouter = config.navigation == 'go_router';
-    final goRouterImport = isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -2475,7 +2477,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static String getOtpScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
     final isGoRouter = config.navigation == 'go_router';
-    final goRouterImport = isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -2581,7 +2584,8 @@ class _OtpScreenState extends State<OtpScreen> {
   static String getResetPasswordScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
     final isGoRouter = config.navigation == 'go_router';
-    final goRouterImport = isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
