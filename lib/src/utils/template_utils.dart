@@ -712,8 +712,8 @@ class ApiService {
 
   // Routes Templates
   static String getAppRoutesTemplate(CliConfig config) {
-  if (config.navigation == 'go_router') {
-    return '''
+    if (config.navigation == 'go_router') {
+      return '''
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -766,8 +766,8 @@ final GoRouter router = GoRouter(
   ],
 );
 ''';
-  } else {
-    return '''
+    } else {
+      return '''
 import 'package:flutter/material.dart';
 
 // Screens
@@ -814,8 +814,8 @@ class AppRoutes {
   }
 }
 ''';
+    }
   }
-}
 
 //   static String getAppRoutesTemplate(CliConfig config) {
 //     if (config.navigation == 'go_router') {
