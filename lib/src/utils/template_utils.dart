@@ -48,8 +48,11 @@ flutter:
     final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final stateClassSuffix =
         config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit';
-    final blocEventImport = config.stateManagement == 'bloc'
-        ? "import 'app/features/home/bloc/home_event.dart';"
+    final authBlocEventImport = config.stateManagement == 'bloc'
+        ? "import 'app/features/auth/$stateFolder/auth_event.dart';"
+        : '';
+    final homeBlocEventImport = config.stateManagement == 'bloc'
+        ? "import 'app/features/home/$stateFolder/home_event.dart';"
         : '';
 
     if (config.navigation == 'go_router') {
@@ -58,11 +61,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
+import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
+import 'app/features/auth/repository/auth_repository.dart';
+import 'app/features/auth/repository/auth_repository_impl.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/repository/home_repository.dart';
 import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/service/api_service.dart';
-$blocEventImport
+$authBlocEventImport
+$homeBlocEventImport
 
 void main() {
   runApp(const MyApp());
@@ -75,11 +82,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
         RepositoryProvider<ApiService>(create: (_) => ApiService()),
+        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(ApiService())),
+        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider(create: (context) => Auth$stateClassSuffix(
+            context.read<AuthRepository>(),
+          )),
           BlocProvider(create: (context) => Home$stateClassSuffix(
             context.read<HomeRepository>(),
           )${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
@@ -101,11 +112,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/routes/route_names.dart';
+import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
+import 'app/features/auth/repository/auth_repository.dart';
+import 'app/features/auth/repository/auth_repository_impl.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/repository/home_repository.dart';
 import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/service/api_service.dart';
-$blocEventImport
+$authBlocEventImport
+$homeBlocEventImport
 
 void main() {
   runApp(const MyApp());
@@ -118,11 +133,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
         RepositoryProvider<ApiService>(create: (_) => ApiService()),
+        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(ApiService())),
+        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider(create: (context) => Auth$stateClassSuffix(
+            context.read<AuthRepository>(),
+          )),
           BlocProvider(create: (context) => Home$stateClassSuffix(
             context.read<HomeRepository>(),
           )${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
@@ -131,7 +150,7 @@ class MyApp extends StatelessWidget {
           title: 'Flutter Demo',
           theme: AppTheme.lightTheme,
           onGenerateRoute: AppRoutes.generateRoute,
-          initialRoute: RouteNames.home,
+          initialRoute: RouteNames.signIn,
         ),
       ),
     );
@@ -712,8 +731,8 @@ class ApiService {
 
   // Routes Templates
   static String getAppRoutesTemplate(CliConfig config) {
-  if (config.navigation == 'go_router') {
-    return '''
+    if (config.navigation == 'go_router') {
+      return '''
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -766,8 +785,8 @@ final GoRouter router = GoRouter(
   ],
 );
 ''';
-  } else {
-    return '''
+    } else {
+      return '''
 import 'package:flutter/material.dart';
 
 // Screens
@@ -814,8 +833,8 @@ class AppRoutes {
   }
 }
 ''';
+    }
   }
-}
 
 //   static String getAppRoutesTemplate(CliConfig config) {
 //     if (config.navigation == 'go_router') {
@@ -2104,9 +2123,13 @@ class AuthCubit extends Cubit<AuthCubitState> {
 
   static String getSignInScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
+    final isGoRouter = config.navigation == 'go_router';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+$goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
@@ -2144,11 +2167,11 @@ class _SignInScreenState extends State<SignInScreen> {
       body: ${isBloc ? 'BlocConsumer<AuthBloc, AuthState>' : 'BlocConsumer<AuthCubit, AuthCubitState>'}(
         listener: (context, state) {
           ${isBloc ? '''if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+            ${isGoRouter ? 'context.go(RouteNames.home);' : 'Navigator.of(context).pushReplacementNamed(RouteNames.home);'}
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
           }''' : '''if (state.isAuthenticated) {
-            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+            ${isGoRouter ? 'context.go(RouteNames.home);' : 'Navigator.of(context).pushReplacementNamed(RouteNames.home);'}
           } else if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
           }'''}
@@ -2184,7 +2207,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: isLoading ? null : () => Navigator.of(context).pushNamed(RouteNames.forgotPassword),
+                        onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.forgotPassword)' : 'Navigator.of(context).pushNamed(RouteNames.forgotPassword)'},
                         child: const Text('Forgot Password?'),
                       ),
                     ),
@@ -2199,7 +2222,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       children: [
                         const Text("Don't have account? "),
                         TextButton(
-                          onPressed: isLoading ? null : () => Navigator.of(context).pushNamed(RouteNames.signUp),
+                          onPressed: isLoading ? null : () => ${isGoRouter ? 'context.go(RouteNames.signUp)' : 'Navigator.of(context).pushNamed(RouteNames.signUp)'},
                           child: const Text('Sign Up'),
                         ),
                       ],
@@ -2219,9 +2242,13 @@ class _SignInScreenState extends State<SignInScreen> {
 
   static String getSignUpScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
+    final isGoRouter = config.navigation == 'go_router';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+$goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
@@ -2264,12 +2291,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         listener: (context, state) {
           ${isBloc ? '''
           if (state is AuthAuthenticated) {
-            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+            ${isGoRouter ? 'context.go(RouteNames.home);' : 'Navigator.of(context).pushReplacementNamed(RouteNames.home);'}
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
           }''' : '''
           if (state.isAuthenticated) {
-            Navigator.of(context).pushReplacementNamed(RouteNames.home);
+            ${isGoRouter ? 'context.go(RouteNames.home);' : 'Navigator.of(context).pushReplacementNamed(RouteNames.home);'}
           } else if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
           }'''}
@@ -2348,9 +2375,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   static String getForgotPasswordScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
+    final isGoRouter = config.navigation == 'go_router';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../cubit/auth_cubit_state.dart';"}
@@ -2388,13 +2417,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ${isBloc ? '''
           if (state is PasswordResetEmailSent) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
-            Navigator.of(context).pushNamed(RouteNames.otpVerify, arguments: _emailController.text.trim());
+            ${isGoRouter ? 'context.go(RouteNames.otpVerify, extra: _emailController.text.trim());' : 'Navigator.of(context).pushNamed(RouteNames.otpVerify, arguments: _emailController.text.trim());'}
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
           }''' : '''
           if (state.message != null && !state.isLoading) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message!)));
-            Navigator.of(context).pushNamed(RouteNames.otpVerify, arguments: _emailController.text.trim());
+            ${isGoRouter ? 'context.go(RouteNames.otpVerify, extra: _emailController.text.trim());' : 'Navigator.of(context).pushNamed(RouteNames.otpVerify, arguments: _emailController.text.trim());'}
           } else if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
           }'''}
@@ -2448,9 +2477,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   static String getOtpScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
+    final isGoRouter = config.navigation == 'go_router';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+$goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
@@ -2489,18 +2522,12 @@ class _OtpScreenState extends State<OtpScreen> {
         listener: (context, state) {
           ${isBloc ? '''
           if (state is OtpVerified) {
-            Navigator.of(context).pushReplacementNamed(
-              RouteNames.resetPassword,
-              arguments: {'email': widget.email, 'otp': _otpController.text.trim()},
-            );
+            ${isGoRouter ? 'context.go(RouteNames.resetPassword, extra: {\'email\': widget.email, \'otp\': _otpController.text.trim()});' : 'Navigator.of(context).pushReplacementNamed(RouteNames.resetPassword, arguments: {\'email\': widget.email, \'otp\': _otpController.text.trim()});'}
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
           }''' : '''
           if (state.message != null && !state.isLoading) {
-            Navigator.of(context).pushReplacementNamed(
-              RouteNames.resetPassword,
-              arguments: {'email': widget.email, 'otp': _otpController.text.trim()},
-            );
+            ${isGoRouter ? 'context.go(RouteNames.resetPassword, extra: {\'email\': widget.email, \'otp\': _otpController.text.trim()});' : 'Navigator.of(context).pushReplacementNamed(RouteNames.resetPassword, arguments: {\'email\': widget.email, \'otp\': _otpController.text.trim()});'}
           } else if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
           }'''}
@@ -2557,9 +2584,13 @@ class _OtpScreenState extends State<OtpScreen> {
 
   static String getResetPasswordScreenTemplate(CliConfig config) {
     final isBloc = config.stateManagement == 'bloc';
+    final isGoRouter = config.navigation == 'go_router';
+    final goRouterImport =
+        isGoRouter ? "import 'package:go_router/go_router.dart';" : '';
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+$goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
@@ -2602,13 +2633,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ${isBloc ? '''
           if (state is PasswordResetSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
-            Navigator.of(context).pushNamedAndRemoveUntil(RouteNames.signIn, (route) => false);
+            ${isGoRouter ? 'context.go(RouteNames.signIn);' : 'Navigator.of(context).pushNamedAndRemoveUntil(RouteNames.signIn, (route) => false);'}
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
           }''' : '''
           if (state.message != null && !state.isLoading) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message!)));
-            Navigator.of(context).pushNamedAndRemoveUntil(RouteNames.signIn, (route) => false);
+            ${isGoRouter ? 'context.go(RouteNames.signIn);' : 'Navigator.of(context).pushNamedAndRemoveUntil(RouteNames.signIn, (route) => false);'}
           } else if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error!)));
           }'''}

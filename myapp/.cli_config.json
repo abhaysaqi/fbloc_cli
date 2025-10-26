@@ -1,6 +1,0 @@
-{
-  "network_package": "dio",
-  "state_management": "cubit",
-  "navigation": "navigator",
-  "equatable": false
-}

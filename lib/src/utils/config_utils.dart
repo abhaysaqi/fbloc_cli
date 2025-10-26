@@ -6,7 +6,7 @@ import '../models/cli_config.dart';
 class ConfigUtils {
   /// Prompts the user for configuration via stdin/stdout.
   static Future<CliConfig> promptForConfiguration() async {
-    print('🔧 Let\'s configure your project:\n');
+    print('Let\'s configure your project:\n');
 
     // Network package selection (arrow-key toggle)
     final networkOptions = ['http', 'dio'];

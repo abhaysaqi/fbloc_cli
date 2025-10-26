@@ -8,18 +8,18 @@ import 'feature_generator.dart';
 
 class ProjectGenerator {
   static Future<void> generateProject(String projectName) async {
-    print('🚀 Creating Flutter project: $projectName');
+    print('Creating Flutter project: $projectName');
 
     // Check if project directory already exists
     final projectDir = Directory(projectName);
     if (await projectDir.exists()) {
-      print('❌ Error: Directory $projectName already exists');
+      print('Error: Directory $projectName already exists');
       return;
     }
 
     // Verify Flutter is available on PATH (no static paths)
     if (!await _isFlutterAvailable()) {
-      print('❌ Flutter not found on PATH.');
+      print('Error: Flutter not found on PATH.');
       print(
           '   Ensure Flutter is installed and `flutter` is available in your PATH.');
       return;
@@ -32,7 +32,7 @@ class ProjectGenerator {
     final result = await _runFlutterCreate(projectName);
 
     if (result.exitCode != 0) {
-      print('❌ Error creating Flutter project');
+      print('Error creating Flutter project');
       // Clean up any partial directory if it was created
       if (await projectDir.exists()) {
         await projectDir.delete(recursive: true);
@@ -51,44 +51,13 @@ class ProjectGenerator {
       await FeatureGenerator.generateFeature('home',
           projectPath: projectName, config: config);
 
-      print('✅ Project $projectName created successfully!');
-
-      // Auto run flutter pub get
-      final pubGetResult = await _runPubGet(projectName);
-
-      if (pubGetResult.exitCode == 0) {
-        print('✅ Dependencies installed successfully!');
-      } else {
-        print('⚠️  Warning: Could not run pub get automatically');
-        print('   Please run: cd $projectName && flutter pub get');
-      }
+      print('Project $projectName created successfully!');
       _printProjectSummary(config, projectName);
     } catch (e) {
-      print('❌ Error during project setup: $e');
+      print('Error during project setup: $e');
       // Clean up the project directory if setup fails
       if (await projectDir.exists()) {
         await projectDir.delete(recursive: true);
-      }
-    }
-  }
-
-  static Future<ProcessResult> _runPubGet(String projectName) async {
-    // Prefer PATH-based flutter; fallback to flutter.bat for Windows
-    try {
-      return await Process.run(
-        'flutter',
-        ['pub', 'get'],
-        workingDirectory: projectName,
-      );
-    } catch (_) {
-      try {
-        return await Process.run(
-          'flutter.bat',
-          ['pub', 'get'],
-          workingDirectory: projectName,
-        );
-      } catch (_) {
-        return ProcessResult(0, 1, '', 'Could not run pub get');
       }
     }
   }
@@ -241,17 +210,12 @@ class ProjectGenerator {
   }
 
   static void _printProjectSummary(CliConfig config, String projectName) {
-    print('\n🎉 Project "$projectName" created successfully!');
-    print('\n📋 Project Configuration:');
-    print('   🌐 Network: ${config.networkPackage}');
-    print('   🏗️  State Management: ${config.stateManagement}');
-    print('   🧭 Navigation: ${config.navigation}');
-    print('   ⚖️  Equatable: ${config.useEquatable ? "Yes" : "No"}');
-    print('\n🎯 Generated Features:');
-    print('   📁 lib/app/features/home/ (with home_screen)');
-    print('   📁 lib/app/core/ (theme, utils, service)');
-    print('   📁 lib/app/routes/ (routing configuration)');
-    print('\n🚀 Next steps:');
+    print('\nProject "$projectName" created successfully!');
+    print('\nGenerated folders:');
+    print('   lib/app/features/home/ (with home_screen)');
+    print('   lib/app/core/ (theme, utils, service)');
+    print('   lib/app/routes/ (routing configuration)');
+    print('\nNext steps:');
     print('   cd $projectName');
     print('   flutter pub get');
     print('   flutter run');

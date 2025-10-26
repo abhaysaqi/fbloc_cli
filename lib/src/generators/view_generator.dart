@@ -7,13 +7,12 @@ import '../utils/template_utils.dart';
 class ViewGenerator {
   static Future<void> generateView(String viewName, String featureName,
       {String? projectPath, CliConfig? config}) async {
-    print('🎨 Generating view: $viewName in feature: $featureName');
+    print('Generating view: $viewName in feature: $featureName');
 
     // Load config if not provided
     config ??= await ConfigUtils.loadConfig(projectPath);
     if (config == null) {
-      print(
-          '⚠️  Warning: No project configuration found. Using default settings.');
+      print('Warning: No project configuration found. Using default settings.');
       config = CliConfig(
         networkPackage: 'http',
         stateManagement: 'bloc',
@@ -29,7 +28,7 @@ class ViewGenerator {
     // Check if feature exists
     if (!await Directory(featurePath).exists()) {
       print(
-          '❌ Error: Feature $featureName does not exist. Create it first using: fbloc create feature $featureName');
+          'Error: Feature $featureName does not exist. Create it first using: fbloc create feature $featureName');
       return;
     }
 
@@ -58,7 +57,7 @@ class ViewGenerator {
       );
     }
 
-    print('✅ View $viewName generated successfully in feature $featureName!');
+    print('View $viewName generated successfully in feature $featureName!');
   }
 
   // Helper method to ensure directory exists without overwriting
@@ -66,7 +65,6 @@ class ViewGenerator {
     final dir = Directory(dirPath);
     if (!await dir.exists()) {
       await dir.create(recursive: true);
-      print('📁 Created directory: $dirPath');
     }
   }
 
@@ -76,9 +74,6 @@ class ViewGenerator {
     final file = File(filePath);
     if (!await file.exists()) {
       await file.writeAsString(content);
-      print('📄 Created $description: $filePath');
-    } else {
-      print('⚠️  $description already exists, skipping: $filePath');
     }
   }
 }
