@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../models/cli_config.dart';
 import 'file_utils.dart';
 
@@ -313,42 +315,38 @@ class AppStyles {
     return '''
 class ApiResponse<T> {
   final bool success;
-  final String message;
   final T? data;
+  final String? message;
   final int? statusCode;
 
-  ApiResponse({
+  const ApiResponse._({
     required this.success,
-    required this.message,
     this.data,
+    this.message,
     this.statusCode,
   });
 
-  factory ApiResponse.fromJson(
-    Map<String, dynamic> json,
-    T Function(dynamic)? fromJsonT,
-  ) {
-    return ApiResponse<T>(
-      success: json['success'] as bool? ?? true,
-      message: json['message'] as String? ?? '',
-      data: fromJsonT != null && json['data'] != null 
-          ? fromJsonT(json['data']) 
-          : null,
-      statusCode: json['status_code'] as int?,
-    );
-  }
-
-  factory ApiResponse.success(T data, {String message = 'Success'}) {
-    return ApiResponse<T>(
+  factory ApiResponse.success({
+    T? data,
+    String? message,
+    int? statusCode,
+  }) {
+    return ApiResponse._(
       success: true,
-      message: message,
       data: data,
+      message: message,
+      statusCode: statusCode,
     );
   }
 
-  factory ApiResponse.error(String message, {int? statusCode}) {
-    return ApiResponse<T>(
+  factory ApiResponse.error({
+    String? message,
+    int? statusCode,
+    T? data,
+  }) {
+    return ApiResponse._(
       success: false,
+      data: data,
       message: message,
       statusCode: statusCode,
     );
@@ -358,6 +356,109 @@ class ApiResponse<T> {
   }
 
   // API Service Template
+//   static String getApiServiceTemplate(CliConfig config) {
+//     if (config.networkPackage == 'dio') {
+//       return '''
+// import 'package:dio/dio.dart';
+// import '../utils/constants.dart';
+// import '../utils/api_response.dart';
+// import 'api_endpoints.dart';
+
+// class ApiService {
+//   static final ApiService _instance = ApiService._internal();
+//   factory ApiService() => _instance;
+//   ApiService._internal() {
+//     _dio = Dio(BaseOptions(
+//       baseUrl: ApiEndpoints.baseUrl,
+//       connectTimeout: AppConstants.timeoutDuration,
+//       receiveTimeout: AppConstants.timeoutDuration,
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': 'Bearer \${AppConstants.apiKey}',
+//       },
+//     ));
+//   }
+
+//   late final Dio _dio;
+
+//   Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await _dio.get(endpoint);
+//       return ApiResponse.fromJson(response.data, fromJson);
+//     } on DioException catch (e) {
+//       return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+//     }
+//   }
+
+//   Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await _dio.post(endpoint, data: data);
+//       return ApiResponse.fromJson(response.data, fromJson);
+//     } on DioException catch (e) {
+//       return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+//     }
+//   }
+// }
+// ''';
+//     } else {
+//       return '''
+// import 'dart:convert';
+// import 'package:http/http.dart' as http;
+// import '../utils/constants.dart';
+// import '../utils/api_response.dart';
+// import 'api_endpoints.dart';
+
+// class ApiService {
+//   static final ApiService _instance = ApiService._internal();
+//   factory ApiService() => _instance;
+//   ApiService._internal();
+
+//   Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await http.get(
+//         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': 'Bearer \${AppConstants.apiKey}',
+//         },
+//       ).timeout(AppConstants.timeoutDuration);
+
+//       return _handleResponse<T>(response, fromJson);
+//     } catch (e) {
+//       return ApiResponse.error('Network error: \$e');
+//     }
+//   }
+
+//   Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
+//     try {
+//       final response = await http.post(
+//         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': 'Bearer \${AppConstants.apiKey}',
+//         },
+//         body: jsonEncode(data),
+//       ).timeout(AppConstants.timeoutDuration);
+
+//       return _handleResponse<T>(response, fromJson);
+//     } catch (e) {
+//       return ApiResponse.error('Network error: \$e');
+//     }
+//   }
+
+//   ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic)? fromJson) {
+//     if (response.statusCode >= 200 && response.statusCode < 300) {
+//       final jsonData = jsonDecode(response.body);
+//       return ApiResponse.fromJson(jsonData, fromJson);
+//     } else {
+//       return ApiResponse.error('HTTP \${response.statusCode}: \${response.body}', statusCode: response.statusCode);
+//     }
+//   }
+// }
+// ''';
+//     }
+//   }
+
   static String getApiServiceTemplate(CliConfig config) {
     if (config.networkPackage == 'dio') {
       return '''
@@ -370,35 +471,123 @@ class ApiService {
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal() {
-    _dio = Dio(BaseOptions(
-      baseUrl: ApiEndpoints.baseUrl,
-      connectTimeout: AppConstants.timeoutDuration,
-      receiveTimeout: AppConstants.timeoutDuration,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer \${AppConstants.apiKey}',
-      },
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: ApiEndpoints.baseUrl,
+        connectTimeout: AppConstants.timeoutDuration,
+        receiveTimeout: AppConstants.timeoutDuration,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer \${AppConstants.apiKey}',
+        },
+      ),
+    );
   }
 
   late final Dio _dio;
 
-  Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
+  Future<ApiResponse<T>> get<T>({
+    required String endpoint,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await _dio.get(endpoint);
-      return ApiResponse.fromJson(response.data, fromJson);
+      final res = await _dio.get(
+        endpoint,
+        queryParameters: query,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
-      return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
     }
   }
 
-  Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
+  Future<ApiResponse<T>> post<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await _dio.post(endpoint, data: data);
-      return ApiResponse.fromJson(response.data, fromJson);
+      final res = await _dio.post(
+        endpoint,
+        data: data,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
-      return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
     }
+  }
+
+  Future<ApiResponse<T>> put<T>({
+    required String endpoint, 
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.put(
+        endpoint,
+        data: data,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse<T>> delete<T>({
+    required String endpoint,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.delete(
+        endpoint,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      return ApiResponse.error(
+        message: 'Network error: \${e.message}',
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  ApiResponse<T> _wrapDioResponse<T>(Response res, T Function(dynamic)? fromJson) {
+    final ok = res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300;
+    if (ok) {
+      final raw = res.data;
+      final parsed = fromJson != null ? fromJson(raw) : raw as T;
+      return ApiResponse.success(
+        data: parsed,
+        message: res.statusMessage,
+        statusCode: res.statusCode,
+      );
+    }
+    return ApiResponse.error(
+      message: res.statusMessage,
+      statusCode: res.statusCode,
+      data: res.data,
+    );
   }
 }
 ''';
@@ -415,46 +604,106 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
+  Future<ApiResponse<T>> get<T>({
+    required String endpoint,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await http.get(
-        Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer \${AppConstants.apiKey}',
-        },
-      ).timeout(AppConstants.timeoutDuration);
-
-      return _handleResponse<T>(response, fromJson);
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint').replace(queryParameters: query);
+      final res = await http
+          .get(uri, headers: _buildHeaders(headers))
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
     } catch (e) {
-      return ApiResponse.error('Network error: \$e');
+      return ApiResponse.error(message: 'Network error: \$e');
     }
   }
 
-  Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
+  Future<ApiResponse<T>> post<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer \${AppConstants.apiKey}',
-        },
-        body: jsonEncode(data),
-      ).timeout(AppConstants.timeoutDuration);
-
-      return _handleResponse<T>(response, fromJson);
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint');
+      final res = await http
+          .post(
+            uri,
+            headers: _buildHeaders(headers),
+            body: data == null ? null : jsonEncode(data),
+          )
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
     } catch (e) {
-      return ApiResponse.error('Network error: \$e');
+      return ApiResponse.error(message: 'Network error: \$e');
     }
   }
 
-  ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic)? fromJson) {
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final jsonData = jsonDecode(response.body);
-      return ApiResponse.fromJson(jsonData, fromJson);
-    } else {
-      return ApiResponse.error('HTTP \${response.statusCode}: \${response.body}', statusCode: response.statusCode);
+  Future<ApiResponse<T>> put<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint');
+      final res = await http
+          .put(
+            uri,
+            headers: _buildHeaders(headers),
+            body: data == null ? null : jsonEncode(data),
+          )
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
+    } catch (e) {
+      return ApiResponse.error(message: 'Network error: \$e');
     }
+  }
+
+  Future<ApiResponse<T>> delete<T>({
+    required String endpoint,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint');
+      final res = await http
+          .delete(uri, headers: _buildHeaders(headers))
+          .timeout(AppConstants.timeoutDuration);
+      return _handleHttpResponse<T>(res, fromJson);
+    } catch (e) {
+      return ApiResponse.error(message: 'Network error: \$e');
+    }
+  }
+
+  Map<String, String> _buildHeaders(Map<String, String>? override) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer \${AppConstants.apiKey}',
+      if (override != null) ...override,
+    };
+  }
+
+  ApiResponse<T> _handleHttpResponse<T>(http.Response res, T Function(dynamic)? fromJson) {
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (ok) {
+      final body = res.body.isEmpty ? null : jsonDecode(res.body);
+      final parsed = fromJson != null ? fromJson(body) : body as T;
+      return ApiResponse.success(
+        data: parsed,
+        message: res.reasonPhrase,
+        statusCode: res.statusCode,
+      );
+    }
+    final body = res.body.isEmpty ? null : jsonDecode(res.body);
+    return ApiResponse.error(
+      message: res.reasonPhrase ?? 'HTTP \${res.statusCode}',
+      statusCode: res.statusCode,
+      data: body,
+    );
   }
 }
 ''';
@@ -559,7 +808,7 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
         _currentPage++;
         emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        emit(${pascalName}Error(response.message));
+        emit(${pascalName}Error(response.message?? 'Failed'));
       }
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
@@ -581,7 +830,7 @@ class ${pascalName}Bloc extends Bloc<${pascalName}Event, ${pascalName}State> {
         }
         emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        emit(${pascalName}Error(response.message));
+        emit(${pascalName}Error(response.message?? 'Failed'));
       }
     } catch (e) {
       emit(${pascalName}Error(e.toString()));
@@ -694,10 +943,10 @@ class ${pascalName}Cubit extends Cubit<${pascalName}State> {
         }
         emit(${pascalName}Loaded(List<${pascalName}Model>.from(_items), hasMore: _hasMore));
       } else {
-        emit(${pascalName}Error(response.message));
+        emit(${pascalName}Error(response.message?? 'Failed'));
       }
     } catch (e) {
-      emit(${pascalName}Error('Failed to load data'));
+      emit(${pascalName}Error('Failed to load data: ${e.toString()}'));
     }
     _isLoading = false;
   }
@@ -1648,7 +1897,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final useEquatable = config.useEquatable;
     return '''
 ${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
-import '../../domain/models/user_model.dart';
+import '../model/user_model.dart';
 
 class AuthCubitState${useEquatable ? ' extends Equatable' : ''} {
   final bool isLoading;
@@ -1683,7 +1932,7 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [isLoading, isAuthen
   static String getAuthCubitTemplate(CliConfig config) {
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/repository/auth_repository.dart';
+import '../repository/auth_repository.dart';
 import 'auth_cubit_state.dart';
 
 class AuthCubit extends Cubit<AuthCubitState> {
@@ -1753,8 +2002,8 @@ class AuthCubit extends Cubit<AuthCubitState> {
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../routes/route_names.dart';
-import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
 import '../components/auth_text_field.dart';
 import '../components/password_field.dart';
 
@@ -1868,8 +2117,8 @@ class _SignInScreenState extends State<SignInScreen> {
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../routes/route_names.dart';
-import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
 import '../components/auth_text_field.dart';
 import '../components/password_field.dart';
 
@@ -1997,8 +2246,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../routes/route_names.dart';
-import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../cubit/auth_cubit_state.dart';"}
 import '../components/auth_text_field.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -2097,8 +2346,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../routes/route_names.dart';
-import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
 import '../components/otp_input_field.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -2206,8 +2455,8 @@ class _OtpScreenState extends State<OtpScreen> {
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../routes/route_names.dart';
-import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
+import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
 import '../components/password_field.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
