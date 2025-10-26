@@ -1352,9 +1352,9 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refres
 
   static String getAuthRepositoryTemplate() {
     return '''
-import '../../../core/network/api_response.dart';
-import '../../domain/models/auth_tokens.dart';
-import '../../domain/models/user_model.dart';
+import '../../../core/utils/api_response.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
 
 abstract class AuthRepository {
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
@@ -1370,12 +1370,12 @@ abstract class AuthRepository {
 
   static String getAuthRepositoryImplTemplate(CliConfig config) {
     return '''
-import '../../../core/network/api_endpoints.dart';
-import '../../../core/network/api_response.dart';
-import '../../../core/network/api_service.dart';
-import '../../domain/models/auth_tokens.dart';
-import '../../domain/models/user_model.dart';
-import '../../domain/repository/auth_repository.dart';
+import '../../../core/service/api_endpoints.dart';
+import '../../../core/utils/api_response.dart';
+import '../../../core/service/api_service.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
+import './auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final ApiService _apiService;
@@ -1521,7 +1521,7 @@ class GetCurrentUserRequested extends AuthEvent {
     final useEquatable = config.useEquatable;
     return '''
 ${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
-import '../../domain/models/user_model.dart';
+import '../model/user_model.dart';
 
 abstract class AuthState${useEquatable ? ' extends Equatable' : ''} {
   const AuthState();
@@ -1575,7 +1575,7 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
   static String getAuthBlocTemplate(CliConfig config) {
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/repository/auth_repository.dart';
+import '../repository/auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -1754,9 +1754,9 @@ class AuthCubit extends Cubit<AuthCubitState> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/routes/route_names.dart';
-import '../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../bloc/auth_event.dart';\nimport '../bloc/auth_state.dart';" : "import '../bloc/auth_cubit_state.dart';"}
+import '../../../../routes/route_names.dart';
+import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
 import '../components/auth_text_field.dart';
 import '../components/password_field.dart';
 
@@ -1869,9 +1869,9 @@ class _SignInScreenState extends State<SignInScreen> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/routes/route_names.dart';
-import '../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../bloc/auth_event.dart';\nimport '../bloc/auth_state.dart';" : "import '../bloc/auth_cubit_state.dart';"}
+import '../../../../routes/route_names.dart';
+import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
 import '../components/auth_text_field.dart';
 import '../components/password_field.dart';
 
@@ -1998,9 +1998,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/routes/route_names.dart';
-import '../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../bloc/auth_event.dart';\nimport '../bloc/auth_state.dart';" : "import '../bloc/auth_cubit_state.dart';"}
+import '../../../../routes/route_names.dart';
+import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
 import '../components/auth_text_field.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -2098,9 +2098,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/routes/route_names.dart';
-import '../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../bloc/auth_event.dart';\nimport '../bloc/auth_state.dart';" : "import '../bloc/auth_cubit_state.dart';"}
+import '../../../../routes/route_names.dart';
+import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
 import '../components/otp_input_field.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -2207,9 +2207,9 @@ class _OtpScreenState extends State<OtpScreen> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/routes/route_names.dart';
-import '../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
-${isBloc ? "import '../bloc/auth_event.dart';\nimport '../bloc/auth_state.dart';" : "import '../bloc/auth_cubit_state.dart';"}
+import '../../../../routes/route_names.dart';
+import '../../bloc/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
+${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../bloc/auth_cubit_state.dart';"}
 import '../components/password_field.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
