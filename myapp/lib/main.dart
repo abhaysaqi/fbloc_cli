@@ -5,6 +5,7 @@ import 'app/routes/app_routes.dart';
 import 'app/routes/route_names.dart';
 import 'app/features/home/cubit/home_cubit.dart';
 import 'app/features/home/repository/home_repository.dart';
+import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/service/api_service.dart';
 
 
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
+        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
         RepositoryProvider<ApiService>(create: (_) => ApiService()),
       ],
       child: MultiBlocProvider(

@@ -712,49 +712,155 @@ class ApiService {
 
   // Routes Templates
   static String getAppRoutesTemplate(CliConfig config) {
-    if (config.navigation == 'go_router') {
-      return '''
+  if (config.navigation == 'go_router') {
+    return '''
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+// Screens
 import '../features/home/view/home_screen.dart';
+import '../features/auth/view/screens/sign_in_screen.dart';
+import '../features/auth/view/screens/sign_up_screen.dart';
+import '../features/auth/view/screens/forgot_password_screen.dart';
+import '../features/auth/view/screens/otp_screen.dart';
+import '../features/auth/view/screens/reset_password_screen.dart';
 
 final GoRouter router = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/sign-in',
   routes: <RouteBase>[
+    // Auth flow
     GoRoute(
-      path: '/',
+      path: '/sign-in',
+      builder: (BuildContext context, GoRouterState state) => const SignInScreen(),
+    ),
+    GoRoute(
+      path: '/sign-up',
+      builder: (BuildContext context, GoRouterState state) => const SignUpScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (BuildContext context, GoRouterState state) => const ForgotPasswordScreen(),
+    ),
+    GoRoute(
+      path: '/otp-verify',
       builder: (BuildContext context, GoRouterState state) {
-        return const HomeScreen();
+        final email = state.extra is String ? state.extra as String : '';
+        return OtpScreen(email: email);
       },
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (BuildContext context, GoRouterState state) {
+        final args = (state.extra as Map?) ?? const {};
+        final email = (args['email'] as String?) ?? '';
+        final otp = (args['otp'] as String?) ?? '';
+        return ResetPasswordScreen(email: email, otp: otp);
+      },
+    ),
+
+    // App (post-auth)
+    GoRoute(
+      path: '/home',
+      builder: (BuildContext context, GoRouterState state) => const HomeScreen(),
     ),
   ],
 );
 ''';
-    } else {
-      return '''
+  } else {
+    return '''
 import 'package:flutter/material.dart';
+
+// Screens
 import '../features/home/view/home_screen.dart';
+import '../features/auth/view/screens/sign_in_screen.dart';
+import '../features/auth/view/screens/sign_up_screen.dart';
+import '../features/auth/view/screens/forgot_password_screen.dart';
+import '../features/auth/view/screens/otp_screen.dart';
+import '../features/auth/view/screens/reset_password_screen.dart';
 import 'route_names.dart';
 
 class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+      // Auth flow
+      case RouteNames.signIn:
+        return MaterialPageRoute(builder: (_) => const SignInScreen());
+      case RouteNames.signUp:
+        return MaterialPageRoute(builder: (_) => const SignUpScreen());
+      case RouteNames.forgotPassword:
+        return MaterialPageRoute(builder: (_) => const ForgotPasswordScreen());
+      case RouteNames.otpVerify: {
+        final email = (settings.arguments as String?) ?? '';
+        return MaterialPageRoute(builder: (_) => OtpScreen(email: email));
+      }
+      case RouteNames.resetPassword: {
+        final args = (settings.arguments as Map?) ?? const {};
+        final email = (args['email'] as String?) ?? '';
+        final otp = (args['otp'] as String?) ?? '';
+        return MaterialPageRoute(builder: (_) => ResetPasswordScreen(email: email, otp: otp));
+      }
+
+      // App (post-auth)
       case RouteNames.home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
+
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('Page not found'),
-            ),
+            body: Center(child: Text('Page not found')),
           ),
         );
     }
   }
 }
 ''';
-    }
   }
+}
+
+//   static String getAppRoutesTemplate(CliConfig config) {
+//     if (config.navigation == 'go_router') {
+//       return '''
+// import 'package:flutter/material.dart';
+// import 'package:go_router/go_router.dart';
+// import '../features/home/view/home_screen.dart';
+
+// final GoRouter router = GoRouter(
+//   initialLocation: '/',
+//   routes: <RouteBase>[
+//     GoRoute(
+//       path: '/',
+//       builder: (BuildContext context, GoRouterState state) {
+//         return const HomeScreen();
+//       },
+//     ),
+//   ],
+// );
+// ''';
+//     } else {
+//       return '''
+// import 'package:flutter/material.dart';
+// import '../features/home/view/home_screen.dart';
+// import 'route_names.dart';
+
+// class AppRoutes {
+//   static Route<dynamic> generateRoute(RouteSettings settings) {
+//     switch (settings.name) {
+//       case RouteNames.home:
+//         return MaterialPageRoute(builder: (_) => const HomeScreen());
+//       default:
+//         return MaterialPageRoute(
+//           builder: (_) => const Scaffold(
+//             body: Center(
+//               child: Text('Page not found'),
+//             ),
+//           ),
+//         );
+//     }
+//   }
+// }
+// ''';
+//     }
+//   }
 
   static String getRouteNamesTemplate() {
     return '''
