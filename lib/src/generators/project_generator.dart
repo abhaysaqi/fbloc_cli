@@ -29,44 +29,47 @@ class ProjectGenerator {
     final config = await ConfigUtils.promptForConfiguration();
 
     // Step 2: Create Flutter project using flutter CLI
-    print('📦 Creating base Flutter project...');
     final result = await _runFlutterCreate(projectName);
 
     if (result.exitCode != 0) {
-      print('❌ Error creating Flutter project:');
-      print('STDOUT: ${result.stdout}');
-      print('STDERR: ${result.stderr}');
+      print('❌ Error creating Flutter project');
+      // Clean up any partial directory if it was created
+      if (await projectDir.exists()) {
+        await projectDir.delete(recursive: true);
+      }
       return;
     }
 
-    // Step 3: Save CLI configuration
-    await ConfigUtils.saveConfig(projectName, config);
+    try {
+      // Step 3: Save CLI configuration
+      await ConfigUtils.saveConfig(projectName, config);
 
-    // Step 4: Replace lib/ directory and pubspec.yaml
-    await _replaceProjectStructure(projectName, config);
+      // Step 4: Replace lib/ directory and pubspec.yaml
+      await _replaceProjectStructure(projectName, config);
 
-    // Step 5: Generate default home feature
-    await FeatureGenerator.generateFeature('home',
-        projectPath: projectName, config: config);
+      // Step 5: Generate default home feature
+      await FeatureGenerator.generateFeature('home',
+          projectPath: projectName, config: config);
 
-    // Step 6: Generate default home_screen view
-    // await ViewGenerator.generateView('home_screen', 'home',
-    //     projectPath: projectName, config: config);
+      print('✅ Project $projectName created successfully!');
 
-    print('✅ Project $projectName created successfully!');
-    print('📁 Configuration saved in .cli_config.json');
+      // Auto run flutter pub get
+      final pubGetResult = await _runPubGet(projectName);
 
-    // Auto run flutter pub get
-    print('📦 Running flutter pub get...');
-    final pubGetResult = await _runPubGet(projectName);
-
-    if (pubGetResult.exitCode == 0) {
-      print('✅ Dependencies installed successfully!');
-    } else {
-      print('⚠️  Warning: Could not run pub get automatically');
-      print('   Please run: cd $projectName && flutter pub get');
+      if (pubGetResult.exitCode == 0) {
+        print('✅ Dependencies installed successfully!');
+      } else {
+        print('⚠️  Warning: Could not run pub get automatically');
+        print('   Please run: cd $projectName && flutter pub get');
+      }
+      _printProjectSummary(config, projectName);
+    } catch (e) {
+      print('❌ Error during project setup: $e');
+      // Clean up the project directory if setup fails
+      if (await projectDir.exists()) {
+        await projectDir.delete(recursive: true);
+      }
     }
-    _printProjectSummary(config, projectName);
   }
 
   static Future<ProcessResult> _runPubGet(String projectName) async {
@@ -104,30 +107,24 @@ class ProjectGenerator {
 
   // Use PATH-based flutter create (with Windows fallback)
   static Future<ProcessResult> _runFlutterCreate(String projectName) async {
-    print('🔍 Attempting to run Flutter create...');
-
     // Try `flutter` first (macOS/Linux/Windows when PATH resolves)
     try {
-      print('🔍 Trying: flutter create');
       final result = await Process.run('flutter', ['create', projectName]);
       if (result.exitCode == 0) {
-        print('✅ Success with flutter!');
         return result;
       }
     } catch (e) {
-      print('❌ flutter failed: $e');
+      // Continue to fallback
     }
 
     // Fallback for Windows where flutter.bat is on PATH
     try {
-      print('🔍 Trying: flutter.bat create');
       final result = await Process.run('flutter.bat', ['create', projectName]);
       if (result.exitCode == 0) {
-        print('✅ Success with flutter.bat!');
         return result;
       }
     } catch (e) {
-      print('❌ flutter.bat failed: $e');
+      // Continue to error
     }
 
     return ProcessResult(

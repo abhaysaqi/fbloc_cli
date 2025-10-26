@@ -383,7 +383,7 @@ class ApiService {
 
   late final Dio _dio;
 
-  Future<ApiResponse<T>> get<T>(String endpoint, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
     try {
       final response = await _dio.get(endpoint);
       return ApiResponse.fromJson(response.data, fromJson);
@@ -392,7 +392,7 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<T>> post<T>(String endpoint, Map<String, dynamic> data, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
     try {
       final response = await _dio.post(endpoint, data: data);
       return ApiResponse.fromJson(response.data, fromJson);
@@ -415,7 +415,7 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  Future<ApiResponse<T>> get<T>(String endpoint, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
     try {
       final response = await http.get(
         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
@@ -431,7 +431,7 @@ class ApiService {
     }
   }
 
-  Future<ApiResponse<T>> post<T>(String endpoint, Map<String, dynamic> data, T Function(dynamic)? fromJson) async {
+  Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
     try {
       final response = await http.post(
         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
@@ -524,8 +524,6 @@ class RouteNames {
   // Feature Templates
   static String getBlocTemplate(String featureName, CliConfig config) {
     final pascalName = FileUtils.toPascalCase(featureName);
-    final equatableImport =
-        config.useEquatable ? "import 'package:equatable/equatable.dart';" : '';
 
     return '''
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -781,8 +779,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
     final response = await _apiService.get<List<${pascalName}Model>>(
-      '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
-      (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
+      endpoint: '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
+      fromJson: (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
     );
     return response;
   }
@@ -790,8 +788,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
     final response = await _apiService.get<${pascalName}Model>(
-      ApiEndpoints.${featureName}ById(id),
-      (data) => ${pascalName}Model.fromJson(data),
+      endpoint: ApiEndpoints.${featureName}ById(id),
+      fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
     return response;
   }
@@ -799,9 +797,9 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
     final response = await _apiService.post<${pascalName}Model>(
-      ApiEndpoints.${featureName}s,
-      $featureName.toJson(),
-      (data) => ${pascalName}Model.fromJson(data),
+      endpoint: ApiEndpoints.${featureName}s,
+      data: $featureName.toJson(),
+      fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
     return response;
   }
@@ -809,9 +807,9 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
     final response = await _apiService.post<${pascalName}Model>(
-      ApiEndpoints.${featureName}ById($featureName.id),
-      $featureName.toJson(),
-      (data) => ${pascalName}Model.fromJson(data),
+      endpoint: ApiEndpoints.${featureName}ById($featureName.id),
+      data: $featureName.toJson(),
+      fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
     return response;
   }
@@ -819,8 +817,8 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
   @override
   Future<ApiResponse<void>> delete$pascalName(String id) async {
     final response = await _apiService.get<void>(
-      ApiEndpoints.${featureName}ById(id),
-      null,
+      endpoint: ApiEndpoints.${featureName}ById(id),
+      fromJson: null,
     );
     return response;
   }
@@ -1385,7 +1383,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
     try {
-      final response = await _apiService.post(ApiEndpoints.login, data: {'email': email, 'password': password});
+      final response = await _apiService.post(endpoint: ApiEndpoints.login, data: {'email': email, 'password': password});
       if (response.success && response.data != null) {
         return ApiResponse.success(data: AuthTokens.fromJson(response.data));
       }
@@ -1398,7 +1396,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
     try {
-      final response = await _apiService.post(ApiEndpoints.register, data: {'name': name, 'email': email, 'password': password});
+      final response = await _apiService.post(endpoint: ApiEndpoints.register, data: {'name': name, 'email': email, 'password': password});
       if (response.success && response.data != null) {
         return ApiResponse.success(data: AuthTokens.fromJson(response.data));
       }
@@ -1411,7 +1409,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<String>> requestPasswordReset(String email) async {
     try {
-      final response = await _apiService.post(ApiEndpoints.forgotPassword, data: {'email': email});
+      final response = await _apiService.post(endpoint: ApiEndpoints.forgotPassword, data: {'email': email});
       return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
@@ -1421,7 +1419,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
     try {
-      final response = await _apiService.post(ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
+      final response = await _apiService.post(endpoint: ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
       return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
@@ -1431,7 +1429,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
     try {
-      final response = await _apiService.post(ApiEndpoints.resetPassword, data: {'email': email, 'otp': otp, 'newPassword': newPassword});
+      final response = await _apiService.post(endpoint: ApiEndpoints.resetPassword, data: {'email': email, 'otp': otp, 'newPassword': newPassword});
       return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
@@ -1441,7 +1439,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<UserModel>> getCurrentUser() async {
     try {
-      final response = await _apiService.get(ApiEndpoints.profile);
+      final response = await _apiService.get(endpoint: ApiEndpoints.profile);
       if (response.success && response.data != null) {
         return ApiResponse.success(data: UserModel.fromJson(response.data));
       }
