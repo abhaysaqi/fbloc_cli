@@ -2,6 +2,8 @@
 
 A scaffolding CLI for Flutter projects with feature-first architecture and BLoC/Cubit state management.
 
+Tip: Please use `fbloc_cli` v2.0.0 or newer — it's stable and error‑free.
+
 ## What it does
 
 - Creates a new Flutter app with opinionated structure
