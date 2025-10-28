@@ -39,7 +39,15 @@ class CreateCommand extends Command {
 
     // Treat as direct project creation
     final projectName = rest.first;
-    await ProjectGenerator.generateProject(projectName);
+    await ProjectGenerator.generateProject(projectName, verbose: false);
+    // Also generate auth feature for direct create path (quiet)
+    await FeatureGenerator.generateFeature(
+      'auth',
+      projectPath: projectName,
+      verbose: false,
+    );
+    ProjectGenerator.printProjectSummary(projectName,
+        features: ['home', 'auth']);
   }
 }
 
@@ -59,14 +67,17 @@ class CreateProjectSubcommand extends Command {
     }
 
     final projectName = argResults!.rest.first;
-    await ProjectGenerator.generateProject(projectName);
+    await ProjectGenerator.generateProject(projectName, verbose: false);
 
-    // Automatically generate auth feature after project creation
-    print('\n🔐 Generating Auth feature...');
+    // Automatically generate auth feature after project creation (quiet)
     await FeatureGenerator.generateFeature(
       'auth',
       projectPath: projectName,
+      verbose: false,
     );
+
+    ProjectGenerator.printProjectSummary(projectName,
+        features: ['home', 'auth']);
   }
 }
 
@@ -91,16 +102,8 @@ class CreateFeatureSubcommand extends Command {
     final featureName = argResults!.rest.first;
 
     // Special handling for auth feature
-    if (featureName.toLowerCase() == 'auth') {
-      print('🔐 Creating authentication feature with:');
-      print('  • Sign In screen');
-      print('  • Sign Up screen');
-      print('  • Forgot Password screen');
-      print('  • OTP Verification screen');
-      print('  • Reset Password screen');
-      print('  • Reusable UI components');
-    }
-
-    await FeatureGenerator.generateFeature(featureName);
+    await FeatureGenerator.generateFeature(featureName, verbose: false);
+    // Final concise output when generating only a feature
+    print('\n✨ Feature generated: $featureName');
   }
 }

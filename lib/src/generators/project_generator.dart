@@ -7,8 +7,11 @@ import '../utils/template_utils.dart';
 import 'feature_generator.dart';
 
 class ProjectGenerator {
-  static Future<void> generateProject(String projectName) async {
-    print('Creating Flutter project: $projectName');
+  static Future<void> generateProject(String projectName,
+      {bool verbose = false}) async {
+    if (verbose) {
+      print('Creating Flutter project: $projectName');
+    }
 
     // Check if project directory already exists
     final projectDir = Directory(projectName);
@@ -49,10 +52,7 @@ class ProjectGenerator {
 
       // Step 5: Generate default home feature
       await FeatureGenerator.generateFeature('home',
-          projectPath: projectName, config: config);
-
-      print('Project $projectName created successfully!');
-      _printProjectSummary(config, projectName);
+          projectPath: projectName, config: config, verbose: false);
     } catch (e) {
       print('Error during project setup: $e');
       // Clean up the project directory if setup fails
@@ -209,15 +209,31 @@ class ProjectGenerator {
     );
   }
 
-  static void _printProjectSummary(CliConfig config, String projectName) {
-    print('\nProject "$projectName" created successfully!');
-    print('\nGenerated folders:');
-    print('   lib/app/features/home/ (with home_screen)');
-    print('   lib/app/core/ (theme, utils, service)');
-    print('   lib/app/routes/ (routing configuration)');
-    print('\nNext steps:');
-    print('   cd $projectName');
-    print('   flutter pub get');
-    print('   flutter run');
+  static void printProjectSummary(String projectName,
+      {List<String> features = const ['home']}) {
+    // Project name
+    print('\n📦 Project "$projectName" created successfully!');
+
+    // Features
+    if (features.isNotEmpty) {
+      print('\n✨ Features generated:');
+      print('   🧩 ${features.join(', ')}');
+    }
+
+    // Folders
+    print('\n📁 Generated folders:');
+    for (final f in features) {
+      print('   📂 app/features/$f/');
+    }
+    print('   📂 app/core/theme/');
+    print('   📂 app/core/utils/');
+    print('   📂 app/core/service/');
+    print('   📂 app/routes/');
+
+    // Next steps
+    print('\n➡️  Next steps:');
+    print('   ➤ cd $projectName');
+    print('   ➤ flutter pub get');
+    print('   ➤ flutter run');
   }
 }

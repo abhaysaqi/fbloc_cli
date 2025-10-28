@@ -374,110 +374,6 @@ class ApiResponse<T> {
 ''';
   }
 
-  // API Service Template
-//   static String getApiServiceTemplate(CliConfig config) {
-//     if (config.networkPackage == 'dio') {
-//       return '''
-// import 'package:dio/dio.dart';
-// import '../utils/constants.dart';
-// import '../utils/api_response.dart';
-// import 'api_endpoints.dart';
-
-// class ApiService {
-//   static final ApiService _instance = ApiService._internal();
-//   factory ApiService() => _instance;
-//   ApiService._internal() {
-//     _dio = Dio(BaseOptions(
-//       baseUrl: ApiEndpoints.baseUrl,
-//       connectTimeout: AppConstants.timeoutDuration,
-//       receiveTimeout: AppConstants.timeoutDuration,
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'Authorization': 'Bearer \${AppConstants.apiKey}',
-//       },
-//     ));
-//   }
-
-//   late final Dio _dio;
-
-//   Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
-//     try {
-//       final response = await _dio.get(endpoint);
-//       return ApiResponse.fromJson(response.data, fromJson);
-//     } on DioException catch (e) {
-//       return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
-//     }
-//   }
-
-//   Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
-//     try {
-//       final response = await _dio.post(endpoint, data: data);
-//       return ApiResponse.fromJson(response.data, fromJson);
-//     } on DioException catch (e) {
-//       return ApiResponse.error('Network error: \${e.message}', statusCode: e.response?.statusCode);
-//     }
-//   }
-// }
-// ''';
-//     } else {
-//       return '''
-// import 'dart:convert';
-// import 'package:http/http.dart' as http;
-// import '../utils/constants.dart';
-// import '../utils/api_response.dart';
-// import 'api_endpoints.dart';
-
-// class ApiService {
-//   static final ApiService _instance = ApiService._internal();
-//   factory ApiService() => _instance;
-//   ApiService._internal();
-
-//   Future<ApiResponse<T>> get<T>({required String endpoint, T Function(dynamic)? fromJson}) async {
-//     try {
-//       final response = await http.get(
-//         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-//         headers: {
-//           'Content-Type': 'application/json',
-//           'Authorization': 'Bearer \${AppConstants.apiKey}',
-//         },
-//       ).timeout(AppConstants.timeoutDuration);
-
-//       return _handleResponse<T>(response, fromJson);
-//     } catch (e) {
-//       return ApiResponse.error('Network error: \$e');
-//     }
-//   }
-
-//   Future<ApiResponse<T>> post<T>({required String endpoint, required Map<String, dynamic> data, T Function(dynamic)? fromJson}) async {
-//     try {
-//       final response = await http.post(
-//         Uri.parse('\${ApiEndpoints.baseUrl}\$endpoint'),
-//         headers: {
-//           'Content-Type': 'application/json',
-//           'Authorization': 'Bearer \${AppConstants.apiKey}',
-//         },
-//         body: jsonEncode(data),
-//       ).timeout(AppConstants.timeoutDuration);
-
-//       return _handleResponse<T>(response, fromJson);
-//     } catch (e) {
-//       return ApiResponse.error('Network error: \$e');
-//     }
-//   }
-
-//   ApiResponse<T> _handleResponse<T>(http.Response response, T Function(dynamic)? fromJson) {
-//     if (response.statusCode >= 200 && response.statusCode < 300) {
-//       final jsonData = jsonDecode(response.body);
-//       return ApiResponse.fromJson(jsonData, fromJson);
-//     } else {
-//       return ApiResponse.error('HTTP \${response.statusCode}: \${response.body}', statusCode: response.statusCode);
-//     }
-//   }
-// }
-// ''';
-//     }
-//   }
-
   static String getApiServiceTemplate(CliConfig config) {
     if (config.networkPackage == 'dio') {
       return '''
@@ -2379,7 +2275,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return '''
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+${isGoRouter ? 'import \'package:go_router/go_router.dart\';' : ''}
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../cubit/auth_cubit_state.dart';"}

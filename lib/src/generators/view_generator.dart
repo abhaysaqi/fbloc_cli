@@ -6,13 +6,18 @@ import '../utils/template_utils.dart';
 
 class ViewGenerator {
   static Future<void> generateView(String viewName, String featureName,
-      {String? projectPath, CliConfig? config}) async {
-    print('Generating view: $viewName in feature: $featureName');
+      {String? projectPath, CliConfig? config, bool verbose = true}) async {
+    if (verbose) {
+      print('Generating view: $viewName in feature: $featureName');
+    }
 
     // Load config if not provided
     config ??= await ConfigUtils.loadConfig(projectPath);
     if (config == null) {
-      print('Warning: No project configuration found. Using default settings.');
+      if (verbose) {
+        print(
+            'Warning: No project configuration found. Using default settings.');
+      }
       config = CliConfig(
         networkPackage: 'http',
         stateManagement: 'bloc',
@@ -57,7 +62,9 @@ class ViewGenerator {
       );
     }
 
-    print('View $viewName generated successfully in feature $featureName!');
+    if (verbose) {
+      print('View $viewName generated successfully in feature $featureName!');
+    }
   }
 
   // Helper method to ensure directory exists without overwriting

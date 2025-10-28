@@ -21,6 +21,7 @@ class ViewCommand extends Command {
     final viewName = args[0];
     final featureName = args[2];
 
-    await ViewGenerator.generateView(viewName, featureName);
+    await ViewGenerator.generateView(viewName, featureName, verbose: false);
+    print('\n🖼️ View generated: $viewName on $featureName');
   }
 }
