@@ -223,8 +223,7 @@ class ProjectGenerator {
     // Folders
     print('\n📁 Generated folders:');
     for (final f in features) {
-      final suffix = f == 'home' ? ' (with home_screen)' : '';
-      print('   📂 app/features/$f/$suffix'.trim());
+      print('   📂 app/features/$f/');
     }
     print('   📂 app/core/theme/');
     print('   📂 app/core/utils/');
