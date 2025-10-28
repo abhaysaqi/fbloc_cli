@@ -8,13 +8,18 @@ import 'view_generator.dart';
 
 class FeatureGenerator {
   static Future<void> generateFeature(String featureName,
-      {String? projectPath, CliConfig? config}) async {
-    print('Generating feature: $featureName');
+      {String? projectPath, CliConfig? config, bool verbose = true}) async {
+    if (verbose) {
+      print('Generating feature: $featureName');
+    }
 
     // Load config if not provided
     config ??= await ConfigUtils.loadConfig(projectPath);
     if (config == null) {
-      print('Warning: No project configuration found. Using default settings.');
+      if (verbose) {
+        print(
+            'Warning: No project configuration found. Using default settings.');
+      }
       config = CliConfig(
         networkPackage: 'http',
         stateManagement: 'bloc',
@@ -25,7 +30,7 @@ class FeatureGenerator {
 
     // Check if this is auth feature generation
     if (featureName.toLowerCase() == 'auth') {
-      await _generateAuthFeature(projectPath, config);
+      await _generateAuthFeature(projectPath, config, verbose: verbose);
       return;
     }
 
@@ -77,6 +82,7 @@ class FeatureGenerator {
       featureName,
       projectPath: projectPath,
       config: config,
+      verbose: verbose,
     );
 
     // Generate components for home feature
@@ -84,13 +90,18 @@ class FeatureGenerator {
       await _generateHomeComponents(basePath, projectPath);
     }
 
-    print('Feature $featureName generated successfully!');
+    if (verbose) {
+      print('Feature $featureName generated successfully!');
+    }
   }
 
   // NEW: Auth feature generation
   static Future<void> _generateAuthFeature(
-      String? projectPath, CliConfig config) async {
-    print('Generating Auth feature with all screens...');
+      String? projectPath, CliConfig config,
+      {bool verbose = true}) async {
+    if (verbose) {
+      print('Generating Auth feature with all screens...');
+    }
 
     final basePath = projectPath != null
         ? path.join(projectPath, 'lib', 'app', 'features', 'auth')
@@ -199,7 +210,9 @@ class FeatureGenerator {
       TemplateUtils.getOtpInputFieldTemplate(),
     );
 
-    print('Auth feature generated successfully with 5 screens!');
+    if (verbose) {
+      print('Auth feature generated successfully with 5 screens!');
+    }
   }
 
   static Future<void> _generateBlocFiles(
