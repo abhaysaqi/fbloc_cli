@@ -6,6 +6,7 @@
 import 'package:args/command_runner.dart';
 import 'src/commands/create_command.dart';
 import 'src/commands/feature_command.dart';
+import 'src/commands/init_command.dart';
 import 'src/commands/view_command.dart';
 
 /// The main coordinator for the `fbloc` command-line interface.
@@ -21,12 +22,11 @@ class FblocCli {
     final runner = CommandRunner<void>(
       'fbloc',
       'A scaffolding CLI for Flutter projects with feature-first architecture',
-    );
-
-    runner
+    )
       ..addCommand(CreateCommand())
       ..addCommand(FeatureCommand())
-      ..addCommand(ViewCommand());
+      ..addCommand(ViewCommand())
+      ..addCommand(InitCommand());
 
     try {
       await runner.run(normalizedArgs);

@@ -71,13 +71,25 @@ Final output looks like:
    ➤ flutter run
 ```
 
-### Create a new feature
+### Initialize an existing project (new)
+
+If you already have a Flutter project and want to use `fbloc_cli` *only* for
+features/views, run this from the project root (where `pubspec.yaml` lives):
 
 ```bash
-fbloc create feature auth
+cd my_existing_app
+fbloc init
 ```
 
-or
+What `fbloc init` does:
+
+- Prompts for configuration (Network, State Management, Navigation, Equatable) if `.cli_config.json` is missing.
+- Creates the expected `lib/app` structure (`core/`, `routes/`, `features/`) without overwriting existing files.
+- Generates core helpers (`AppTheme`, `AppColors`, `ApiService`, `ApiResponse`, `ApiEndpoints`, routes) only if they don't already exist.
+
+After this, you can use all feature/view commands inside the existing app.
+
+### Create a new feature
 
 ```bash
 fbloc feature auth
