@@ -1,4 +1,4 @@
-## 2.0.1
+## 2.1.0
 
 - New default features on project create: `home` and `auth`
 - Concise, icon-based output with clear next steps
