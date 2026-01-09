@@ -1,6 +1,6 @@
 name: fbloc_cli
 description: A scaffolding CLI for Flutter projects with feature-first architecture and BLoC/Cubit state management.
-version: 2.0.1
+version: 2.1.0
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
