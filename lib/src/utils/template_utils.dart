@@ -3379,4 +3379,13 @@ Future<void> init() async {
 }
 ''';
   }
+
+  static String getAppConfigTemplate() {
+    return '''
+class AppConfig {
+  static const String appName = 'Flutter App';
+  static const String baseUrl = 'https://api.example.com';
+}
+''';
+  }
 }

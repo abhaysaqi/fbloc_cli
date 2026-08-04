@@ -124,6 +124,7 @@ class ProjectGenerator {
 
     // Create directories
     final dirs = [
+      'config',
       'core/constants',
       'core/errors',
       'core/network',
@@ -149,6 +150,12 @@ class ProjectGenerator {
 
   static Future<void> _createCoreFiles(
       String basePath, CliConfig config) async {
+    // config dir (outside core)
+    await FileUtils.writeFile(
+      path.join(basePath, 'config/app_config.dart'),
+      TemplateUtils.getAppConfigTemplate(),
+    );
+
     // constants dir
     await FileUtils.writeFile(
       path.join(basePath, 'core/constants/appassets.dart'),
@@ -317,6 +324,7 @@ class ProjectGenerator {
     for (final f in features) {
       print('   📂 app/features/$f/');
     }
+    print('   📂 app/config/');
     print('   📂 app/core/theme/');
     print('   📂 app/core/utils/');
     print('   📂 app/core/constants/');
