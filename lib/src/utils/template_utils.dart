@@ -9,6 +9,8 @@ class TemplateUtils {
     final dependencies = <String>[
       'flutter:\n    sdk: flutter',
       'flutter_bloc: ^9.1.1',
+      'flutter_secure_storage: ^9.2.2',
+      'get_it: ^8.0.3',
     ];
 
     if (config.useEquatable) dependencies.add('equatable: ^2.0.7');
@@ -67,11 +69,14 @@ import 'app/features/auth/repository/auth_repository_impl.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/repository/home_repository.dart';
 import 'app/features/home/repository/home_repository_impl.dart';
-import 'app/core/service/api_service.dart';
+import 'app/core/network/client/dio_client.dart';
+import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
 $homeBlocEventImport
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await di.init();
   runApp(const MyApp());
 }
 
@@ -82,8 +87,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<ApiService>(create: (_) => ApiService()),
-        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(ApiService())),
+        RepositoryProvider<DioClient>(create: (_) => di.sl<DioClient>()),
+        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(di.sl<DioClient>())),
         RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
       ],
       child: MultiBlocProvider(
@@ -118,11 +123,14 @@ import 'app/features/auth/repository/auth_repository_impl.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/repository/home_repository.dart';
 import 'app/features/home/repository/home_repository_impl.dart';
-import 'app/core/service/api_service.dart';
+import 'app/core/network/client/dio_client.dart';
+import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
 $homeBlocEventImport
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await di.init();
   runApp(const MyApp());
 }
 
@@ -133,8 +141,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<ApiService>(create: (_) => ApiService()),
-        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(ApiService())),
+        RepositoryProvider<DioClient>(create: (_) => di.sl<DioClient>()),
+        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(di.sl<DioClient>())),
         RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
       ],
       child: MultiBlocProvider(
@@ -1037,18 +1045,18 @@ abstract class ${pascalName}Repository {
     final pascalName = FileUtils.toPascalCase(featureName);
 
     return '''
-import '../../../core/service/api_service.dart';
+import '../../../core/network/client/dio_client.dart';
 import '../model/${featureName}_model.dart';
 import '${featureName}_repository.dart';
-import '../../../core/service/api_endpoints.dart';
-import '../../../core/utils/api_response.dart';
+import '../../../core/constants/apiendpoints.dart';
+import '../../../core/network/api_response.dart';
 
 class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
-  final ApiService _apiService = ApiService();
+  final DioClient _dioClient = DioClient();
 
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
-    final response = await _apiService.get<List<${pascalName}Model>>(
+    final response = await _dioClient.get<List<${pascalName}Model>>(
       endpoint: '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
       fromJson: (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
     );
@@ -1057,7 +1065,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
 
   @override
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
-    final response = await _apiService.get<${pascalName}Model>(
+    final response = await _dioClient.get<${pascalName}Model>(
       endpoint: ApiEndpoints.${featureName}ById(id),
       fromJson: (data) => ${pascalName}Model.fromJson(data),
     );
@@ -1066,7 +1074,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
 
   @override
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
-    final response = await _apiService.post<${pascalName}Model>(
+    final response = await _dioClient.post<${pascalName}Model>(
       endpoint: ApiEndpoints.${featureName}s,
       data: $featureName.toJson(),
       fromJson: (data) => ${pascalName}Model.fromJson(data),
@@ -1076,7 +1084,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
 
   @override
   Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
-    final response = await _apiService.post<${pascalName}Model>(
+    final response = await _dioClient.post<${pascalName}Model>(
       endpoint: ApiEndpoints.${featureName}ById($featureName.id),
       data: $featureName.toJson(),
       fromJson: (data) => ${pascalName}Model.fromJson(data),
@@ -1086,7 +1094,7 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
 
   @override
   Future<ApiResponse<void>> delete$pascalName(String id) async {
-    final response = await _apiService.get<void>(
+    final response = await _dioClient.get<void>(
       endpoint: ApiEndpoints.${featureName}ById(id),
       fromJson: null,
     );
@@ -1638,22 +1646,22 @@ abstract class AuthRepository {
 
   static String getAuthRepositoryImplTemplate(CliConfig config) {
     return '''
-import '../../../core/service/api_endpoints.dart';
-import '../../../core/utils/api_response.dart';
-import '../../../core/service/api_service.dart';
+import '../../../core/constants/apiendpoints.dart';
+import '../../../core/network/api_response.dart';
+import '../../../core/network/client/dio_client.dart';
 import '../model/auth_tokens.dart';
 import '../model/user_model.dart';
 import './auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  final ApiService _apiService;
+  final DioClient _dioClient;
 
-  AuthRepositoryImpl(this._apiService);
+  AuthRepositoryImpl(this._dioClient);
 
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
     try {
-      final response = await _apiService.post(endpoint: ApiEndpoints.login, data: {'email': email, 'password': password});
+      final response = await _dioClient.post(endpoint: ApiEndpoints.login, data: {'email': email, 'password': password});
       if (response.success && response.data != null) {
         return ApiResponse.success(data: AuthTokens.fromJson(response.data));
       }
@@ -1666,7 +1674,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
     try {
-      final response = await _apiService.post(endpoint: ApiEndpoints.register, data: {'name': name, 'email': email, 'password': password});
+      final response = await _dioClient.post(endpoint: ApiEndpoints.register, data: {'name': name, 'email': email, 'password': password});
       if (response.success && response.data != null) {
         return ApiResponse.success(data: AuthTokens.fromJson(response.data));
       }
@@ -1679,7 +1687,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<String>> requestPasswordReset(String email) async {
     try {
-      final response = await _apiService.post(endpoint: ApiEndpoints.forgotPassword, data: {'email': email});
+      final response = await _dioClient.post(endpoint: ApiEndpoints.forgotPassword, data: {'email': email});
       return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
@@ -1689,7 +1697,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
     try {
-      final response = await _apiService.post(endpoint: ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
+      final response = await _dioClient.post(endpoint: ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
       return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
@@ -1699,7 +1707,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
     try {
-      final response = await _apiService.post(endpoint: ApiEndpoints.resetPassword, data: {'email': email, 'otp': otp, 'newPassword': newPassword});
+      final response = await _dioClient.post(endpoint: ApiEndpoints.resetPassword, data: {'email': email, 'otp': otp, 'newPassword': newPassword});
       return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
@@ -1709,7 +1717,7 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<ApiResponse<UserModel>> getCurrentUser() async {
     try {
-      final response = await _apiService.get(endpoint: ApiEndpoints.profile);
+      final response = await _dioClient.get(endpoint: ApiEndpoints.profile);
       if (response.success && response.data != null) {
         return ApiResponse.success(data: UserModel.fromJson(response.data));
       }
@@ -2717,6 +2725,657 @@ class OtpInputField extends StatelessWidget {
       validator: validator,
     );
   }
+}
+''';
+  }
+
+  // --- NEW STRUCTURE TEMPLATES ---
+
+  static String getAppAssetsTemplate() {
+    return '''
+class AppAssets {
+  static const String logo = 'assets/images/logo.png';
+}
+''';
+  }
+
+  static String getAppTextsTemplate() {
+    return '''
+class AppTexts {
+  static const String appName = 'Flutter App';
+}
+''';
+  }
+
+  static String getFailuresTemplate() {
+    return '''
+abstract class Failure {
+  final String message;
+  const Failure(this.message);
+}
+
+class ServerFailure extends Failure {
+  const ServerFailure(super.message);
+}
+
+class CacheFailure extends Failure {
+  const CacheFailure(super.message);
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure(super.message);
+}
+''';
+  }
+
+  static String getExceptionsTemplate() {
+    return '''
+class ServerException implements Exception {
+  final String message;
+  const ServerException(this.message);
+}
+
+class CacheException implements Exception {
+  final String message;
+  const CacheException(this.message);
+}
+
+class NetworkException implements Exception {
+  final String message;
+  const NetworkException(this.message);
+}
+''';
+  }
+
+  static String getConnectionCheckerTemplate() {
+    return '''
+import 'dart:io';
+
+abstract class ConnectionChecker {
+  Future<bool> get isConnected;
+}
+
+class ConnectionCheckerImpl implements ConnectionChecker {
+  @override
+  Future<bool> get isConnected async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
+}
+''';
+  }
+
+  static String getDioClientTemplate() {
+    return '''
+import 'package:dio/dio.dart';
+import '../../constants/apiendpoints.dart';
+import '../api_response.dart';
+import 'dio_interceptor/logging_interceptor.dart';
+import '../handler/dio_exception_handler.dart';
+
+class DioClient {
+  static final DioClient _instance = DioClient._internal();
+  factory DioClient({Dio? dio}) {
+    if (dio != null) {
+      return DioClient._custom(dio);
+    }
+    return _instance;
+  }
+
+  DioClient._internal() : _dio = Dio() {
+    _init();
+  }
+
+  DioClient._custom(Dio dio) : _dio = dio {
+    _init();
+  }
+
+  late final Dio _dio;
+
+  void _init() {
+    _dio
+      ..options.baseUrl = ApiEndpoints.baseUrl
+      ..options.connectTimeout = const Duration(seconds: 15)
+      ..options.receiveTimeout = const Duration(seconds: 15)
+      ..options.headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      }
+      ..interceptors.add(LoggingInterceptor());
+  }
+
+  Dio get dio => _dio;
+
+  Future<ApiResponse<T>> get<T>({
+    required String endpoint,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.get(
+        endpoint,
+        queryParameters: query,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      final ex = DioExceptionHandler.handleException(e);
+      return ApiResponse.error(
+        message: ex.toString().replaceAll('Exception: ', ''),
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse<T>> post<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.post(
+        endpoint,
+        data: data,
+        queryParameters: query,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      final ex = DioExceptionHandler.handleException(e);
+      return ApiResponse.error(
+        message: ex.toString().replaceAll('Exception: ', ''),
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse<T>> put<T>({
+    required String endpoint,
+    dynamic data,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.put(
+        endpoint,
+        data: data,
+        queryParameters: query,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      final ex = DioExceptionHandler.handleException(e);
+      return ApiResponse.error(
+        message: ex.toString().replaceAll('Exception: ', ''),
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  Future<ApiResponse<T>> delete<T>({
+    required String endpoint,
+    Map<String, dynamic>? query,
+    Map<String, String>? headers,
+    T Function(dynamic)? fromJson,
+  }) async {
+    try {
+      final res = await _dio.delete(
+        endpoint,
+        queryParameters: query,
+        options: Options(headers: headers),
+      );
+      return _wrapDioResponse<T>(res, fromJson);
+    } on DioException catch (e) {
+      final ex = DioExceptionHandler.handleException(e);
+      return ApiResponse.error(
+        message: ex.toString().replaceAll('Exception: ', ''),
+        statusCode: e.response?.statusCode,
+        data: e.response?.data,
+      );
+    }
+  }
+
+  ApiResponse<T> _wrapDioResponse<T>(Response res, T Function(dynamic)? fromJson) {
+    final ok = res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300;
+    if (ok) {
+      final raw = res.data;
+      final parsed = fromJson != null ? fromJson(raw) : raw as T;
+      return ApiResponse.success(
+        data: parsed,
+        message: res.statusMessage,
+        statusCode: res.statusCode,
+      );
+    }
+    return ApiResponse.error(
+      message: res.statusMessage ?? 'API Error',
+      statusCode: res.statusCode,
+      data: res.data,
+    );
+  }
+}
+''';
+  }
+
+  static String getLoggingInterceptorTemplate() {
+    return '''
+import 'package:dio/dio.dart';
+import '../../../utils/logger.dart';
+
+class LoggingInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    AppLogger.info('REQUEST[\${options.method}] => PATH: \${options.path}');
+    super.onRequest(options, handler);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    AppLogger.info('RESPONSE[\${response.statusCode}] => PATH: \${response.requestOptions.path}');
+    super.onResponse(response, handler);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    AppLogger.error('ERROR[\${err.response?.statusCode}] => PATH: \${err.requestOptions.path}');
+    super.onError(err, handler);
+  }
+}
+''';
+  }
+
+  static String getDioExceptionHandlerTemplate() {
+    return '''
+import 'package:dio/dio.dart';
+import '../../errors/exceptions.dart';
+
+class DioExceptionHandler {
+  static Exception handleException(DioException dioException) {
+    switch (dioException.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return const NetworkException('Connection timeout. Please try again.');
+      case DioExceptionType.badResponse:
+        final statusCode = dioException.response?.statusCode;
+        final message = dioException.response?.data?['message'] ?? 'Something went wrong';
+        return ServerException('Server error (\$statusCode): \$message');
+      case DioExceptionType.connectionError:
+        return const NetworkException('No internet connection.');
+      default:
+        return const ServerException('Unexpected error occurred.');
+    }
+  }
+}
+''';
+  }
+
+  static String getAppStylesTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class AppStyles {
+  static const TextStyle h1 = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+  );
+
+  static const TextStyle h2 = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+  );
+
+  static const TextStyle body = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.normal,
+  );
+
+  static const TextStyle caption = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w300,
+  );
+}
+''';
+  }
+
+  static String getL10nExtensionTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+extension L10nExtension on BuildContext {
+  String translate(String key) => key;
+}
+''';
+  }
+
+  static String getDateFormatterTemplate() {
+    return '''
+extension DateFormatter on DateTime {
+  String toReadableString() {
+    return '\$day/\$month/\$year';
+  }
+}
+''';
+  }
+
+  static String getThemeExtensionTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+extension ThemeExtension on BuildContext {
+  ThemeData get theme => Theme.of(this);
+  TextTheme get textTheme => theme.textTheme;
+  ColorScheme get colorScheme => theme.colorScheme;
+}
+''';
+  }
+
+  static String getAppThemeExtensionTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+extension AppThemeExtension on BuildContext {
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
+}
+''';
+  }
+
+  static String getSecureStorageServiceTemplate() {
+    return '''
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'storage_keys.dart';
+
+class SecureStorageService {
+  final FlutterSecureStorage _storage;
+
+  SecureStorageService({FlutterSecureStorage? storage})
+      : _storage = storage ?? const FlutterSecureStorage();
+
+  Future<void> write(StorageKeys key, String value) async {
+    await _storage.write(key: key.name, value: value);
+  }
+
+  Future<String?> read(StorageKeys key) async {
+    return await _storage.read(key: key.name);
+  }
+
+  Future<void> delete(StorageKeys key) async {
+    await _storage.delete(key: key.name);
+  }
+
+  Future<void> clearAll() async {
+    await _storage.deleteAll();
+  }
+}
+''';
+  }
+
+  static String getStorageKeysTemplate() {
+    return '''
+enum StorageKeys {
+  token,
+  userId,
+  isLoggedIn,
+}
+''';
+  }
+
+  static String getAppHelperTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class AppHelper {
+  static void showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+}
+''';
+  }
+
+  static String getAppLoggerTemplate() {
+    return '''
+import 'dart:developer' as developer;
+
+class AppLogger {
+  static void info(String message) {
+    developer.log('💡 INFO: \$message', name: 'APP');
+  }
+
+  static void error(String message, [Object? error, StackTrace? stackTrace]) {
+    developer.log(
+      '🚨 ERROR: \$message',
+      name: 'APP',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  static void debug(String message) {
+    developer.log('🔧 DEBUG: \$message', name: 'APP');
+  }
+}
+''';
+  }
+
+  static String getCustomButtonTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+import '../theme/appcolors.dart';
+
+class CustomButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final Color? color;
+
+  const CustomButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color ?? AppColors.primary,
+      ),
+      child: Text(text),
+    );
+  }
+}
+''';
+  }
+
+  static String getCustomAppBarTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final List<Widget>? actions;
+
+  const CustomAppBar({
+    super.key,
+    required this.title,
+    this.actions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      title: Text(title),
+      actions: actions,
+      centerTitle: true,
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+''';
+  }
+
+  static String getCustomBackButtonTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class CustomBackButton extends StatelessWidget {
+  const CustomBackButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back_ios),
+      onPressed: () => Navigator.maybePop(context),
+    );
+  }
+}
+''';
+  }
+
+  static String getCustomDialogTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class CustomDialog extends StatelessWidget {
+  final String title;
+  final String content;
+  final String confirmText;
+  final VoidCallback onConfirm;
+
+  const CustomDialog({
+    super.key,
+    required this.title,
+    required this.content,
+    this.confirmText = 'OK',
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(title),
+      content: Text(content),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            onConfirm();
+          },
+          child: Text(confirmText),
+        ),
+      ],
+    );
+  }
+}
+''';
+  }
+
+  static String getCustomDrawerTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class CustomDrawer extends StatelessWidget {
+  const CustomDrawer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(color: Colors.blue),
+            child: Text(
+              'Menu',
+              style: TextStyle(color: Colors.white, fontSize: 24),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: const Text('Home'),
+            onTap: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+''';
+  }
+
+  static String getSocialButtonTemplate() {
+    return '''
+import 'package:flutter/material.dart';
+
+class SocialButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const SocialButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+}
+''';
+  }
+
+  static String getInjectionContainerTemplate() {
+    return '''
+import 'package:get_it/get_it.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../network/client/dio_client.dart';
+import '../network/connection_checker.dart';
+import '../storage/secure_storage_service.dart';
+
+final sl = GetIt.instance;
+
+Future<void> init() async {
+  // External
+  sl.registerLazySingleton(() => Dio());
+  sl.registerLazySingleton(() => const FlutterSecureStorage());
+
+  // Core
+  sl.registerLazySingleton<ConnectionChecker>(() => ConnectionCheckerImpl());
+  sl.registerLazySingleton(() => DioClient(dio: sl()));
+  sl.registerLazySingleton(() => SecureStorageService(storage: sl()));
 }
 ''';
   }
