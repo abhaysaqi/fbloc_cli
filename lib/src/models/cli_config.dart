@@ -32,7 +32,7 @@ class CliConfig {
 
   /// Creates a configuration from a JSON map.
   factory CliConfig.fromJson(Map<String, dynamic> json) => CliConfig(
-        networkPackage: json['network_package'] ?? 'http',
+        networkPackage: json['network_package'] ?? 'dio',
         stateManagement: json['state_management'] ?? 'bloc',
         navigation: json['navigation'] ?? 'go_router',
         useEquatable: json['equatable'] ?? true,
