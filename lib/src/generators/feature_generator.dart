@@ -48,6 +48,7 @@ class FeatureGenerator {
     final stateDir = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final dirs = [
       stateDir,
+      'datasource',
       'repository',
       'model',
       'view',
@@ -63,6 +64,9 @@ class FeatureGenerator {
     } else {
       await _generateCubitFiles(basePath, featureName, config);
     }
+
+    // Generate Datasource files
+    await _generateDatasourceFiles(basePath, featureName);
 
     // Generate Repository files
     await _generateRepositoryFiles(basePath, featureName);
@@ -119,10 +123,11 @@ class FeatureGenerator {
     // Create auth directory structure
     final dirs = [
       stateDir,
+      'datasource',
       'repository',
       'model',
       'view/screens',
-      'view/components',
+      'view/widgets',
     ];
 
     for (final dir in dirs) {
@@ -139,14 +144,16 @@ class FeatureGenerator {
       TemplateUtils.getAuthTokensModelTemplate(config),
     );
 
+    // Generate datasource
+    await FileUtils.writeFile(
+      path.join(basePath, 'datasource', 'auth_datasource.dart'),
+      TemplateUtils.getAuthDatasourceTemplate(config),
+    );
+
     // Generate repository
     await FileUtils.writeFile(
       path.join(basePath, 'repository', 'auth_repository.dart'),
-      TemplateUtils.getAuthRepositoryTemplate(),
-    );
-    await FileUtils.writeFile(
-      path.join(basePath, 'repository', 'auth_repository_impl.dart'),
-      TemplateUtils.getAuthRepositoryImplTemplate(config),
+      TemplateUtils.getAuthRepositoryTemplate(config),
     );
 
     // Generate BLoC or Cubit
@@ -198,15 +205,15 @@ class FeatureGenerator {
 
     // Generate components
     await FileUtils.writeFile(
-      path.join(basePath, 'view', 'components', 'auth_text_field.dart'),
+      path.join(basePath, 'view', 'widgets', 'auth_text_field.dart'),
       TemplateUtils.getAuthTextFieldTemplate(),
     );
     await FileUtils.writeFile(
-      path.join(basePath, 'view', 'components', 'password_field.dart'),
+      path.join(basePath, 'view', 'widgets', 'password_field.dart'),
       TemplateUtils.getPasswordFieldTemplate(),
     );
     await FileUtils.writeFile(
-      path.join(basePath, 'view', 'components', 'otp_input_field.dart'),
+      path.join(basePath, 'view', 'widgets', 'otp_input_field.dart'),
       TemplateUtils.getOtpInputFieldTemplate(),
     );
 
@@ -252,10 +259,13 @@ class FeatureGenerator {
       path.join(basePath, 'repository', '${featureName}_repository.dart'),
       TemplateUtils.getRepositoryTemplate(featureName),
     );
+  }
 
+  static Future<void> _generateDatasourceFiles(
+      String basePath, String featureName) async {
     await FileUtils.writeFile(
-      path.join(basePath, 'repository', '${featureName}_repository_impl.dart'),
-      TemplateUtils.getRepositoryImplTemplate(featureName),
+      path.join(basePath, 'datasource', '${featureName}_datasource.dart'),
+      TemplateUtils.getDatasourceTemplate(featureName),
     );
   }
 
@@ -269,19 +279,19 @@ class FeatureGenerator {
 
   static Future<void> _generateHomeComponents(
       String basePath, String? projectPath) async {
-    // Create components directory
-    final componentsPath = path.join(basePath, 'view', 'components');
-    await FileUtils.createDirectory(componentsPath);
+    // Create widgets directory
+    final widgetsPath = path.join(basePath, 'view', 'widgets');
+    await FileUtils.createDirectory(widgetsPath);
 
     // Generate bottom navbar
     await FileUtils.writeFile(
-      path.join(componentsPath, 'bottom_navbar.dart'),
+      path.join(widgetsPath, 'bottom_navbar.dart'),
       TemplateUtils.getBottomNavbarTemplate(),
     );
 
     // Generate app drawer
     await FileUtils.writeFile(
-      path.join(componentsPath, 'app_drawer.dart'),
+      path.join(widgetsPath, 'app_drawer.dart'),
       TemplateUtils.getAppDrawerTemplate(),
     );
   }

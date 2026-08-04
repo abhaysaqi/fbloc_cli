@@ -46,6 +46,7 @@ flutter:
   }
 
   // Main Template
+  // Main Template
   static String getMainTemplate(CliConfig config) {
     final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final stateClassSuffix =
@@ -64,11 +65,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
+import 'app/features/auth/datasource/auth_datasource.dart';
 import 'app/features/auth/repository/auth_repository.dart';
-import 'app/features/auth/repository/auth_repository_impl.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
+import 'app/features/home/datasource/home_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
-import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/network/client/dio_client.dart';
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
@@ -88,8 +89,10 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<DioClient>(create: (_) => di.sl<DioClient>()),
-        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(di.sl<DioClient>())),
-        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
+        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthDatasource>())),
+        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeDatasource>())),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -118,11 +121,11 @@ import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/routes/route_names.dart';
 import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
+import 'app/features/auth/datasource/auth_datasource.dart';
 import 'app/features/auth/repository/auth_repository.dart';
-import 'app/features/auth/repository/auth_repository_impl.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
+import 'app/features/home/datasource/home_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
-import 'app/features/home/repository/home_repository_impl.dart';
 import 'app/core/network/client/dio_client.dart';
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
@@ -142,8 +145,10 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<DioClient>(create: (_) => di.sl<DioClient>()),
-        RepositoryProvider<AuthRepository>(create: (_) => AuthRepositoryImpl(di.sl<DioClient>())),
-        RepositoryProvider<HomeRepository>(create: (_) => HomeRepositoryImpl()),
+        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthDatasource>())),
+        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeDatasource>())),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -1024,35 +1029,27 @@ class ${pascalName}Error extends ${pascalName}State {
 ''';
   }
 
-  static String getRepositoryTemplate(String featureName) {
+  static String getDatasourceTemplate(String featureName) {
     final pascalName = FileUtils.toPascalCase(featureName);
 
     return '''
+import '../../../core/network/client/dio_client.dart';
 import '../model/${featureName}_model.dart';
-import '../../../core/utils/api_response.dart';
+import '../../../core/network/api_response.dart';
+import '../../../core/constants/apiendpoints.dart';
 
-abstract class ${pascalName}Repository {
+abstract class ${pascalName}Datasource {
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id);
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName);
   Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName);
   Future<ApiResponse<void>> delete$pascalName(String id);
 }
-''';
-  }
 
-  static String getRepositoryImplTemplate(String featureName) {
-    final pascalName = FileUtils.toPascalCase(featureName);
+class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
+  final DioClient _dioClient;
 
-    return '''
-import '../../../core/network/client/dio_client.dart';
-import '../model/${featureName}_model.dart';
-import '${featureName}_repository.dart';
-import '../../../core/constants/apiendpoints.dart';
-import '../../../core/network/api_response.dart';
-
-class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
-  final DioClient _dioClient = DioClient();
+  ${pascalName}DatasourceImpl(this._dioClient);
 
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
@@ -1099,6 +1096,55 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
       fromJson: null,
     );
     return response;
+  }
+}
+''';
+  }
+
+  static String getRepositoryTemplate(String featureName) {
+    final pascalName = FileUtils.toPascalCase(featureName);
+
+    return '''
+import '../model/${featureName}_model.dart';
+import '../../../core/network/api_response.dart';
+import '../datasource/${featureName}_datasource.dart';
+
+abstract class ${pascalName}Repository {
+  Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
+  Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id);
+  Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName);
+  Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName);
+  Future<ApiResponse<void>> delete$pascalName(String id);
+}
+
+class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
+  final ${pascalName}Datasource _datasource;
+
+  ${pascalName}RepositoryImpl(this._datasource);
+
+  @override
+  Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
+    return await _datasource.get${pascalName}s(page: page, limit: limit);
+  }
+
+  @override
+  Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
+    return await _datasource.get${pascalName}ById(id);
+  }
+
+  @override
+  Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
+    return await _datasource.create$pascalName($featureName);
+  }
+
+  @override
+  Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
+    return await _datasource.update$pascalName($featureName);
+  }
+
+  @override
+  Future<ApiResponse<void>> delete$pascalName(String id) async {
+    return await _datasource.delete$pascalName(id);
   }
 }
 ''';
@@ -1235,10 +1281,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../$stateFolder/${featureName}_${config.stateManagement}.dart';
 import '../$stateFolder/${featureName}_state.dart';
 $eventImport
-import 'components/bottom_navbar.dart';
-import 'components/app_drawer.dart';
-import '../../../core/utils/strings.dart';
-import '../../../core/theme/app_colors.dart';
+import 'widgets/bottom_navbar.dart';
+import 'widgets/app_drawer.dart';
+import '../../../core/theme/appcolors.dart';
 
 class $pascalViewName extends StatefulWidget {
   const $pascalViewName({super.key});
@@ -1626,13 +1671,15 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refres
 
 // ============ AUTH REPOSITORY ============
 
-  static String getAuthRepositoryTemplate() {
+  static String getAuthDatasourceTemplate(CliConfig config) {
     return '''
-import '../../../core/utils/api_response.dart';
+import '../../../core/constants/apiendpoints.dart';
+import '../../../core/network/api_response.dart';
+import '../../../core/network/client/dio_client.dart';
 import '../model/auth_tokens.dart';
 import '../model/user_model.dart';
 
-abstract class AuthRepository {
+abstract class AuthDatasource {
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password});
   Future<ApiResponse<String>> requestPasswordReset(String email);
@@ -1641,22 +1688,11 @@ abstract class AuthRepository {
   Future<ApiResponse<UserModel>> getCurrentUser();
   Future<void> logout();
 }
-''';
-  }
 
-  static String getAuthRepositoryImplTemplate(CliConfig config) {
-    return '''
-import '../../../core/constants/apiendpoints.dart';
-import '../../../core/network/api_response.dart';
-import '../../../core/network/client/dio_client.dart';
-import '../model/auth_tokens.dart';
-import '../model/user_model.dart';
-import './auth_repository.dart';
-
-class AuthRepositoryImpl implements AuthRepository {
+class AuthDatasourceImpl implements AuthDatasource {
   final DioClient _dioClient;
 
-  AuthRepositoryImpl(this._dioClient);
+  AuthDatasourceImpl(this._dioClient);
 
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
@@ -1730,6 +1766,66 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> logout() async {
     // Clear stored tokens
+  }
+}
+''';
+  }
+
+  static String getAuthRepositoryTemplate(CliConfig config) {
+    return '''
+import '../../../core/network/api_response.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
+import '../datasource/auth_datasource.dart';
+
+abstract class AuthRepository {
+  Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
+  Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password});
+  Future<ApiResponse<String>> requestPasswordReset(String email);
+  Future<ApiResponse<String>> verifyOtp({required String email, required String otp});
+  Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword});
+  Future<ApiResponse<UserModel>> getCurrentUser();
+  Future<void> logout();
+}
+
+class AuthRepositoryImpl implements AuthRepository {
+  final AuthDatasource _datasource;
+
+  AuthRepositoryImpl(this._datasource);
+
+  @override
+  Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
+    return await _datasource.signInWithEmail(email: email, password: password);
+  }
+
+  @override
+  Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
+    return await _datasource.signUpWithEmail(name: name, email: email, password: password);
+  }
+
+  @override
+  Future<ApiResponse<String>> requestPasswordReset(String email) async {
+    return await _datasource.requestPasswordReset(email);
+  }
+
+  @override
+  Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
+    return await _datasource.verifyOtp(email: email, otp: otp);
+  }
+
+  @override
+  Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
+    return await _datasource.resetPassword(email: email, otp: otp, newPassword: newPassword);
+  }
+
+  @override
+  Future<ApiResponse<UserModel>> getCurrentUser() async {
+    return await _datasource.getCurrentUser();
+  }
+
+  @override
+  Future<void> logout() async {
+    await _datasource.logout();
   }
 }
 ''';
@@ -2037,8 +2133,8 @@ $goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
-import '../components/auth_text_field.dart';
-import '../components/password_field.dart';
+import '../widgets/auth_text_field.dart';
+import '../widgets/password_field.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -2156,8 +2252,8 @@ $goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
-import '../components/auth_text_field.dart';
-import '../components/password_field.dart';
+import '../widgets/auth_text_field.dart';
+import '../widgets/password_field.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -2287,7 +2383,7 @@ ${isGoRouter ? 'import \'package:go_router/go_router.dart\';' : ''}
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../bloc/auth_event.dart';\nimport '../../bloc/auth_state.dart';" : "import '../../cubit/auth_cubit_state.dart';"}
-import '../components/auth_text_field.dart';
+import '../widgets/auth_text_field.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -2391,7 +2487,7 @@ $goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
-import '../components/otp_input_field.dart';
+import '../widgets/otp_input_field.dart';
 
 class OtpScreen extends StatefulWidget {
   final String email;
@@ -2498,7 +2594,7 @@ $goRouterImport
 import '../../../../routes/route_names.dart';
 import '../../${isBloc ? 'bloc' : 'cubit'}/auth_${isBloc ? 'bloc' : 'cubit'}.dart';
 ${isBloc ? "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_event.dart';\nimport '../../${isBloc ? 'bloc' : 'cubit'}/auth_state.dart';" : "import '../../${isBloc ? 'bloc' : 'cubit'}/auth_cubit_state.dart';"}
-import '../components/password_field.dart';
+import '../widgets/password_field.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String email;
