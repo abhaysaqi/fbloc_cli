@@ -9,7 +9,7 @@ class ConfigUtils {
     print('Let\'s configure your project:\n');
 
     // Network package selection (arrow-key toggle)
-    final networkOptions = ['http', 'dio'];
+    final networkOptions = ['dio', 'http'];
     final networkIndex = interact.Select(
       prompt: 'Choose network package',
       options: networkOptions,
