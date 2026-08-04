@@ -124,9 +124,15 @@ class ProjectGenerator {
 
     // Create directories
     final dirs = [
+      'core/constants',
+      'core/errors',
+      'core/network',
       'core/theme',
+      'core/extensions',
+      'core/storage',
       'core/utils',
-      'core/service',
+      'core/widgets',
+      'core/di',
       'routes',
       'features',
     ];
@@ -143,48 +149,134 @@ class ProjectGenerator {
 
   static Future<void> _createCoreFiles(
       String basePath, CliConfig config) async {
-    // Theme files
+    // constants dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/theme/app_colors.dart'),
-      TemplateUtils.getAppColorsTemplate(),
+      path.join(basePath, 'core/constants/appassets.dart'),
+      TemplateUtils.getAppAssetsTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/constants/apptexts.dart'),
+      TemplateUtils.getAppTextsTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/constants/apiendpoints.dart'),
+      TemplateUtils.getApiEndpointsTemplate(config),
     );
 
+    // errors dir
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/errors/failures.dart'),
+      TemplateUtils.getFailuresTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/errors/exceptions.dart'),
+      TemplateUtils.getExceptionsTemplate(),
+    );
+
+    // network dir
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/network/connection_checker.dart'),
+      TemplateUtils.getConnectionCheckerTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/network/api_response.dart'),
+      TemplateUtils.getCommonResponseTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/network/client/dio_client.dart'),
+      TemplateUtils.getDioClientTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
+      TemplateUtils.getLoggingInterceptorTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/network/handler/dio_exception_handler.dart'),
+      TemplateUtils.getDioExceptionHandlerTemplate(),
+    );
+
+    // theme dir
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/theme/appcolors.dart'),
+      TemplateUtils.getAppColorsTemplate(),
+    );
     await FileUtils.writeFile(
       path.join(basePath, 'core/theme/app_theme.dart'),
       TemplateUtils.getAppThemeTemplate(),
     );
-
-    // Utils files
     await FileUtils.writeFile(
-      path.join(basePath, 'core/utils/constants.dart'),
-      TemplateUtils.getConstantsTemplate(),
+      path.join(basePath, 'core/theme/app_styles.dart'),
+      TemplateUtils.getAppStylesTemplate(),
     );
 
+    // extension dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/utils/strings.dart'),
-      TemplateUtils.getStringsTemplate(),
+      path.join(basePath, 'core/extensions/l10_extension.dart'),
+      TemplateUtils.getL10nExtensionTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/extensions/date_formatter.dart'),
+      TemplateUtils.getDateFormatterTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/extensions/theme_extension.dart'),
+      TemplateUtils.getThemeExtensionTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/extensions/app_theme.dart'),
+      TemplateUtils.getAppThemeExtensionTemplate(),
     );
 
+    // storage dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/utils/styles.dart'),
-      TemplateUtils.getStylesTemplate(),
+      path.join(basePath, 'core/storage/secure_storage_service.dart'),
+      TemplateUtils.getSecureStorageServiceTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/storage/storage_keys.dart'),
+      TemplateUtils.getStorageKeysTemplate(),
     );
 
+    // utils dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/utils/api_response.dart'),
-      TemplateUtils.getCommonResponseTemplate(),
+      path.join(basePath, 'core/utils/helper.dart'),
+      TemplateUtils.getAppHelperTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/utils/logger.dart'),
+      TemplateUtils.getAppLoggerTemplate(),
     );
 
-    // Service
+    // widgets dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/service/api_service.dart'),
-      TemplateUtils.getApiServiceTemplate(config),
+      path.join(basePath, 'core/widgets/custombutton.dart'),
+      TemplateUtils.getCustomButtonTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/widgets/custom_appbar.dart'),
+      TemplateUtils.getCustomAppBarTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/widgets/custom_back_button.dart'),
+      TemplateUtils.getCustomBackButtonTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/widgets/custom_dialog.dart'),
+      TemplateUtils.getCustomDialogTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/widgets/custom_drawer.dart'),
+      TemplateUtils.getCustomDrawerTemplate(),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'core/widgets/social_button.dart'),
+      TemplateUtils.getSocialButtonTemplate(),
     );
 
-    // API Endpoints
+    // di dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/service/api_endpoints.dart'),
-      TemplateUtils.getApiEndpointsTemplate(config),
+      path.join(basePath, 'core/di/injection_container.dart'),
+      TemplateUtils.getInjectionContainerTemplate(),
     );
   }
 
@@ -227,7 +319,13 @@ class ProjectGenerator {
     }
     print('   📂 app/core/theme/');
     print('   📂 app/core/utils/');
-    print('   📂 app/core/service/');
+    print('   📂 app/core/constants/');
+    print('   📂 app/core/errors/');
+    print('   📂 app/core/network/');
+    print('   📂 app/core/extensions/');
+    print('   📂 app/core/storage/');
+    print('   📂 app/core/widgets/');
+    print('   📂 app/core/di/');
     print('   📂 app/routes/');
 
     // Next steps
