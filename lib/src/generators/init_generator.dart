@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import '../models/cli_config.dart';
 import '../utils/config_utils.dart';
 import '../utils/file_utils.dart';
 import '../utils/template_utils.dart';
+import 'feature_generator.dart';
 
 /// Initializes an existing Flutter project so it can use all fbloc_cli features.
 ///
@@ -108,11 +110,82 @@ class InitGenerator {
       TemplateUtils.getRouteNamesTemplate(),
     );
 
+    // 5) Configure main.dart to match 'create' command behavior
+    final mainFile = File(path.join(root, 'lib', 'main.dart'));
+    if (await mainFile.exists()) {
+      final backupFile = File(path.join(root, 'lib', 'main.dart.backup'));
+      if (!await backupFile.exists()) {
+        await mainFile.copy(backupFile.path);
+        print('Created backup of existing main.dart at lib/main.dart.backup');
+      }
+    }
+    await FileUtils.writeFile(
+      mainFile.path,
+      TemplateUtils.getMainTemplate(config),
+    );
+
+    // 6) Generate default home and auth features
+    await FeatureGenerator.generateFeature(
+      'home',
+      projectPath: root,
+      config: config,
+      verbose: false,
+    );
+    await FeatureGenerator.generateFeature(
+      'auth',
+      projectPath: root,
+      config: config,
+      verbose: false,
+    );
+
+    // 7) Add required dependencies to pubspec.yaml
+    await _addDependencies(root, config);
+
     print('\n✅ fbloc_cli initialized for this project.');
     print('You can now use:');
     print('  ➤ fbloc feature <name>');
     print('  ➤ fbloc create feature <name>');
     print('  ➤ fbloc view <view_name> on <feature_name>');
+  }
+
+  static Future<void> _addDependencies(String root, CliConfig config) async {
+    final packages = <String>[];
+    packages.add('flutter_bloc');
+    if (config.useEquatable) {
+      packages.add('equatable');
+    }
+    if (config.networkPackage == 'dio') {
+      packages.add('dio');
+    } else if (config.networkPackage == 'http') {
+      packages.add('http');
+    }
+    if (config.navigation == 'go_router') {
+      packages.add('go_router');
+    }
+
+    if (packages.isEmpty) return;
+    print('\nAdding required dependencies to pubspec.yaml: ${packages.join(', ')}...');
+
+    // Try running `flutter pub add ...`
+    try {
+      final result = await Process.run('flutter', ['pub', 'add', ...packages], workingDirectory: root);
+      if (result.exitCode == 0) {
+        print('✅ Dependencies added successfully.');
+        return;
+      }
+    } catch (_) {}
+
+    // Windows fallback
+    try {
+      final result = await Process.run('flutter.bat', ['pub', 'add', ...packages], workingDirectory: root);
+      if (result.exitCode == 0) {
+        print('✅ Dependencies added successfully.');
+        return;
+      }
+    } catch (_) {}
+
+    print('⚠️  Warning: Could not add dependencies automatically. Please run:');
+    print('   flutter pub add ${packages.join(' ')}');
   }
 
   static Future<void> _ensureDirectory(String dirPath) async {
