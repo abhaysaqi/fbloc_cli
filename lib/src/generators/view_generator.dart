@@ -38,11 +38,11 @@ class ViewGenerator {
     }
 
     final viewPath = path.join(featurePath, 'view');
-    final componentsPath = path.join(viewPath, 'components');
+    final widgetsPath = path.join(viewPath, 'widgets');
 
-    // Create view and components directories ONLY if they don't exist
+    // Create view and widgets directories ONLY if they don't exist
     await _ensureDirectoryExists(viewPath);
-    await _ensureDirectoryExists(componentsPath);
+    await _ensureDirectoryExists(widgetsPath);
 
     // Generate screen file ONLY if it doesn't exist
     final screenFilePath = path.join(viewPath, '$viewName.dart');
@@ -54,7 +54,7 @@ class ViewGenerator {
 
     // Generate sample component ONLY for home_screen and ONLY if it doesn't exist
     if (viewName == 'home_screen') {
-      final bottomNavbarPath = path.join(componentsPath, 'bottom_navbar.dart');
+      final bottomNavbarPath = path.join(widgetsPath, 'bottom_navbar.dart');
       await _createFileIfNotExists(
         bottomNavbarPath,
         TemplateUtils.getBottomNavbarTemplate(),
