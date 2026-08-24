@@ -58,46 +58,168 @@ class InitGenerator {
     }
 
     final appBase = path.join(libDir.path, 'app');
-    await _ensureDirectory(path.join(appBase, 'core', 'theme'));
-    await _ensureDirectory(path.join(appBase, 'core', 'utils'));
-    await _ensureDirectory(path.join(appBase, 'core', 'service'));
-    await _ensureDirectory(path.join(appBase, 'routes'));
-    await _ensureDirectory(path.join(appBase, 'features'));
+
+    // Create directories
+    final dirs = [
+      'config',
+      'core/constants',
+      'core/errors',
+      'core/network',
+      'core/theme',
+      'core/extensions',
+      'core/storage',
+      'core/utils',
+      'core/widgets',
+      'core/di',
+      'routes',
+      'features',
+    ];
+
+    for (final dir in dirs) {
+      await _ensureDirectory(path.join(appBase, dir));
+    }
+
+    // Create nested network directories if missing
+    await _ensureDirectory(path.join(appBase, 'core/network/client'));
+    await _ensureDirectory(path.join(appBase, 'core/network/client/dio_interceptor'));
+    await _ensureDirectory(path.join(appBase, 'core/network/handler'));
 
     // 3) Create core files if missing
+
+    // config dir
     await _createFileIfMissing(
-      path.join(appBase, 'core', 'theme', 'app_colors.dart'),
+      path.join(appBase, 'config/app_config.dart'),
+      TemplateUtils.getAppConfigTemplate(),
+    );
+
+    // constants dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/constants/app_assets.dart'),
+      TemplateUtils.getAppAssetsTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/constants/app_texts.dart'),
+      TemplateUtils.getAppTextsTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/constants/api_endpoints.dart'),
+      TemplateUtils.getApiEndpointsTemplate(config),
+    );
+
+    // errors dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/errors/failures.dart'),
+      TemplateUtils.getFailuresTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/errors/exceptions.dart'),
+      TemplateUtils.getExceptionsTemplate(),
+    );
+
+    // network dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/network/connection_checker.dart'),
+      TemplateUtils.getConnectionCheckerTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/network/api_response.dart'),
+      TemplateUtils.getCommonResponseTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/network/client/dio_client.dart'),
+      TemplateUtils.getDioClientTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
+      TemplateUtils.getLoggingInterceptorTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/network/handler/dio_exception_handler.dart'),
+      TemplateUtils.getDioExceptionHandlerTemplate(),
+    );
+
+    // theme dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/theme/app_colors.dart'),
       TemplateUtils.getAppColorsTemplate(),
     );
     await _createFileIfMissing(
-      path.join(appBase, 'core', 'theme', 'app_theme.dart'),
+      path.join(appBase, 'core/theme/app_theme.dart'),
       TemplateUtils.getAppThemeTemplate(),
     );
-
     await _createFileIfMissing(
-      path.join(appBase, 'core', 'utils', 'constants.dart'),
-      TemplateUtils.getConstantsTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core', 'utils', 'strings.dart'),
-      TemplateUtils.getStringsTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core', 'utils', 'styles.dart'),
-      TemplateUtils.getStylesTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core', 'utils', 'api_response.dart'),
-      TemplateUtils.getCommonResponseTemplate(),
+      path.join(appBase, 'core/theme/app_styles.dart'),
+      TemplateUtils.getAppStylesTemplate(),
     );
 
+    // extension dir
     await _createFileIfMissing(
-      path.join(appBase, 'core', 'service', 'api_service.dart'),
-      TemplateUtils.getApiServiceTemplate(config),
+      path.join(appBase, 'core/extensions/l10_extension.dart'),
+      TemplateUtils.getL10nExtensionTemplate(),
     );
     await _createFileIfMissing(
-      path.join(appBase, 'core', 'service', 'api_endpoints.dart'),
-      TemplateUtils.getApiEndpointsTemplate(config),
+      path.join(appBase, 'core/extensions/date_formatter.dart'),
+      TemplateUtils.getDateFormatterTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/extensions/theme_extension.dart'),
+      TemplateUtils.getThemeExtensionTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/extensions/app_theme.dart'),
+      TemplateUtils.getAppThemeExtensionTemplate(),
+    );
+
+    // storage dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/storage/secure_storage_service.dart'),
+      TemplateUtils.getSecureStorageServiceTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/storage/storage_keys.dart'),
+      TemplateUtils.getStorageKeysTemplate(),
+    );
+
+    // utils dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/utils/helper.dart'),
+      TemplateUtils.getAppHelperTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/utils/logger.dart'),
+      TemplateUtils.getAppLoggerTemplate(),
+    );
+
+    // widgets dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/widgets/custom_button.dart'),
+      TemplateUtils.getCustomButtonTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/widgets/custom_appbar.dart'),
+      TemplateUtils.getCustomAppBarTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/widgets/custom_back_button.dart'),
+      TemplateUtils.getCustomBackButtonTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/widgets/custom_dialog.dart'),
+      TemplateUtils.getCustomDialogTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/widgets/custom_drawer.dart'),
+      TemplateUtils.getCustomDrawerTemplate(),
+    );
+    await _createFileIfMissing(
+      path.join(appBase, 'core/widgets/social_button.dart'),
+      TemplateUtils.getSocialButtonTemplate(),
+    );
+
+    // di dir
+    await _createFileIfMissing(
+      path.join(appBase, 'core/di/injection_container.dart'),
+      TemplateUtils.getInjectionContainerTemplate(),
     );
 
     // 4) Create routing helpers if missing

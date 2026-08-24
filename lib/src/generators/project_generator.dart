@@ -158,15 +158,15 @@ class ProjectGenerator {
 
     // constants dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/constants/appassets.dart'),
+      path.join(basePath, 'core/constants/app_assets.dart'),
       TemplateUtils.getAppAssetsTemplate(),
     );
     await FileUtils.writeFile(
-      path.join(basePath, 'core/constants/apptexts.dart'),
+      path.join(basePath, 'core/constants/app_texts.dart'),
       TemplateUtils.getAppTextsTemplate(),
     );
     await FileUtils.writeFile(
-      path.join(basePath, 'core/constants/apiendpoints.dart'),
+      path.join(basePath, 'core/constants/api_endpoints.dart'),
       TemplateUtils.getApiEndpointsTemplate(config),
     );
 
@@ -204,7 +204,7 @@ class ProjectGenerator {
 
     // theme dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/theme/appcolors.dart'),
+      path.join(basePath, 'core/theme/app_colors.dart'),
       TemplateUtils.getAppColorsTemplate(),
     );
     await FileUtils.writeFile(
@@ -256,7 +256,7 @@ class ProjectGenerator {
 
     // widgets dir
     await FileUtils.writeFile(
-      path.join(basePath, 'core/widgets/custombutton.dart'),
+      path.join(basePath, 'core/widgets/custom_button.dart'),
       TemplateUtils.getCustomButtonTemplate(),
     );
     await FileUtils.writeFile(

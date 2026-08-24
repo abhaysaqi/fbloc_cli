@@ -1036,7 +1036,7 @@ class ${pascalName}Error extends ${pascalName}State {
 import '../../../core/network/client/dio_client.dart';
 import '../model/${featureName}_model.dart';
 import '../../../core/network/api_response.dart';
-import '../../../core/constants/apiendpoints.dart';
+import '../../../core/constants/api_endpoints.dart';
 
 abstract class ${pascalName}Datasource {
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
@@ -1283,7 +1283,8 @@ import '../$stateFolder/${featureName}_state.dart';
 $eventImport
 import 'widgets/bottom_navbar.dart';
 import 'widgets/app_drawer.dart';
-import '../../../core/theme/appcolors.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/app_texts.dart';
 
 class $pascalViewName extends StatefulWidget {
   const $pascalViewName({super.key});
@@ -1299,7 +1300,7 @@ class _${pascalViewName}State extends State<$pascalViewName> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.homeScreen),
+        title: const Text(AppTexts.homeScreen),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
       ),
@@ -1314,12 +1315,12 @@ class _${pascalViewName}State extends State<$pascalViewName> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('\${AppStrings.errorPrefix} \${state.message}'),
+                  Text('\${AppTexts.errorPrefix} \${state.message}'),
                   ElevatedButton(
                     onPressed: () {
                       ${config.stateManagement == 'bloc' ? 'context.read<$stateClass>().add(${pascalFeatureName}Started());' : 'context.read<$stateClass>().loadData(refresh: true);'}
                     },
-                    child: const Text(AppStrings.retry),
+                    child: const Text(AppTexts.retry),
                   ),
                 ],
               ),
@@ -1329,7 +1330,7 @@ class _${pascalViewName}State extends State<$pascalViewName> {
           if (state is ${pascalFeatureName}Loaded) {
             final items = state.items;
             if (items.isEmpty) {
-              return const Center(child: Text(AppStrings.noItemsFound));
+              return const Center(child: Text(AppTexts.noItemsFound));
             }
             return RefreshIndicator(
               onRefresh: () async {
@@ -1351,7 +1352,7 @@ class _${pascalViewName}State extends State<$pascalViewName> {
                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: ListTile(
                       title: Text($itemVar.name),
-                      subtitle: Text('\${AppStrings.idPrefix} \${$itemVar.id}'),
+                      subtitle: Text('\${AppTexts.idPrefix} \${$itemVar.id}'),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () {
                         // Handle item tap
@@ -1363,7 +1364,7 @@ class _${pascalViewName}State extends State<$pascalViewName> {
             );
           }
           
-          return const Center(child: Text(AppStrings.initialState));
+          return const Center(child: Text(AppTexts.initialState));
         },
       ),
       bottomNavigationBar: BottomNavbar(
@@ -1421,7 +1422,7 @@ class $pascalViewName extends StatelessWidget {
             );
           }
           
-          return const Center(child: Text(AppStrings.initialState));
+          return const Center(child: Text(AppTexts.initialState));
         },
       ),
     );
@@ -1435,7 +1436,7 @@ class $pascalViewName extends StatelessWidget {
     return '''
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/strings.dart';
+import '../../../../core/constants/app_texts.dart';
 
 class BottomNavbar extends StatelessWidget {
   final int selectedIndex;
@@ -1459,19 +1460,19 @@ class BottomNavbar extends StatelessWidget {
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
-          label: AppStrings.home,
+          label: AppTexts.home,
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.search),
-          label: AppStrings.search,
+          label: AppTexts.search,
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person),
-          label: AppStrings.profile,
+          label: AppTexts.profile,
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.settings),
-          label: AppStrings.settings,
+          label: AppTexts.settings,
         ),
       ],
     );
@@ -1484,7 +1485,7 @@ class BottomNavbar extends StatelessWidget {
     return '''
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/strings.dart';
+import '../../../../core/constants/app_texts.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -1513,7 +1514,7 @@ class AppDrawer extends StatelessWidget {
                 ),
                 SizedBox(height: 16),
                 Text(
-                  AppStrings.welcomeUser,
+                  AppTexts.welcomeUser,
                   style: TextStyle(
                     color: AppColors.onPrimary,
                     fontSize: 18,
@@ -1521,7 +1522,7 @@ class AppDrawer extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  AppStrings.userEmail,
+                  AppTexts.userEmail,
                   style: TextStyle(
                     color: AppColors.onPrimary,
                     fontSize: 14,
@@ -1532,7 +1533,7 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.home),
-            title: const Text(AppStrings.home),
+            title: const Text(AppTexts.home),
             onTap: () {
               Navigator.pop(context);
               // Navigate to home
@@ -1540,7 +1541,7 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.person),
-            title: const Text(AppStrings.profile),
+            title: const Text(AppTexts.profile),
             onTap: () {
               Navigator.pop(context);
               // Navigate to profile
@@ -1548,7 +1549,7 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.settings),
-            title: const Text(AppStrings.settings),
+            title: const Text(AppTexts.settings),
             onTap: () {
               Navigator.pop(context);
               // Navigate to settings
@@ -1556,7 +1557,7 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.help),
-            title: const Text(AppStrings.helpSupport),
+            title: const Text(AppTexts.helpSupport),
             onTap: () {
               Navigator.pop(context);
               // Navigate to help
@@ -1565,7 +1566,7 @@ class AppDrawer extends StatelessWidget {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text(AppStrings.logout),
+            title: const Text(AppTexts.logout),
             onTap: () {
               Navigator.pop(context);
               // Handle logout
@@ -1673,7 +1674,7 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refres
 
   static String getAuthDatasourceTemplate(CliConfig config) {
     return '''
-import '../../../core/constants/apiendpoints.dart';
+import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_response.dart';
 import '../../../core/network/client/dio_client.dart';
 import '../model/auth_tokens.dart';
@@ -2839,46 +2840,330 @@ class AppAssets {
     return '''
 class AppTexts {
   static const String appName = 'Flutter App';
+
+  // Common strings
+  static const String loading = 'Loading...';
+  static const String error = 'Something went wrong';
+  static const String retry = 'Retry';
+  static const String cancel = 'Cancel';
+  static const String ok = 'OK';
+  static const String save = 'Save';
+  static const String delete = 'Delete';
+  
+  // Home screen strings
+  static const String homeScreen = 'Home';
+  static const String noItemsFound = 'No items found';
+  static const String initialState = 'Initial State';
+  static const String errorPrefix = 'Error:';
+  static const String idPrefix = 'ID:';
+  
+  // Drawer strings
+  static const String welcomeUser = 'Welcome User';
+  static const String userEmail = 'user@example.com';
+  static const String home = 'Home';
+  static const String profile = 'Profile';
+  static const String settings = 'Settings';
+  static const String helpSupport = 'Help & Support';
+  static const String logout = 'Logout';
+  
+  // Bottom navigation strings
+  static const String search = 'Search';
 }
 ''';
   }
 
   static String getFailuresTemplate() {
     return '''
-abstract class Failure {
+/// Base failure for application-level errors.
+///
+/// Failures are returned from repositories and consumed by
+/// the domain/presentation layers.
+abstract class AppFailure {
   final String message;
-  const Failure(this.message);
+  final String? code;
+
+  const AppFailure({
+    required this.message,
+    this.code,
+  });
+
+  @override
+  String toString() {
+    if (code != null) {
+      return '\$runtimeType(\$code): \$message';
+    }
+
+    return '\$runtimeType: \$message';
+  }
 }
 
-class ServerFailure extends Failure {
-  const ServerFailure(super.message);
+/// Represents a network connectivity failure.
+class NetworkFailure extends AppFailure {
+  const NetworkFailure({
+    super.message = 'No internet connection.',
+    super.code,
+  });
 }
 
-class CacheFailure extends Failure {
-  const CacheFailure(super.message);
+/// Represents a request timeout failure.
+class TimeoutFailure extends AppFailure {
+  const TimeoutFailure({
+    super.message = 'The request timed out.',
+    super.code,
+  });
 }
 
-class NetworkFailure extends Failure {
-  const NetworkFailure(super.message);
+/// Represents an authentication failure.
+class UnauthorizedFailure extends AppFailure {
+  const UnauthorizedFailure({
+    super.message = 'Authentication is required.',
+    super.code,
+  });
 }
+
+/// Represents a permission failure.
+class ForbiddenFailure extends AppFailure {
+  const ForbiddenFailure({
+    super.message = 'You do not have permission to perform this action.',
+    super.code,
+  });
+}
+
+/// Represents a resource-not-found failure.
+class NotFoundFailure extends AppFailure {
+  const NotFoundFailure({
+    super.message = 'The requested resource was not found.',
+    super.code,
+  });
+}
+
+/// Represents an invalid-request failure.
+class BadRequestFailure extends AppFailure {
+  const BadRequestFailure({
+    super.message = 'The request was invalid.',
+    super.code,
+  });
+}
+
+/// Represents a server-side failure.
+class ServerFailure extends AppFailure {
+  const ServerFailure({
+    super.message = 'Something went wrong on the server.',
+    super.code,
+  });
+}
+
+/// Represents a response parsing failure.
+class ParsingFailure extends AppFailure {
+  const ParsingFailure({
+    super.message = 'Failed to process the server response.',
+    super.code,
+  });
+}
+
+/// Represents a local cache/storage failure.
+class CacheFailure extends AppFailure {
+  const CacheFailure({
+    super.message = 'Failed to access local data.',
+    super.code,
+  });
+}
+
+/// Represents a local database failure.
+class DatabaseFailure extends AppFailure {
+  const DatabaseFailure({
+    super.message = 'A database error occurred.',
+    super.code,
+  });
+}
+
+/// Represents an input validation failure.
+class ValidationFailure extends AppFailure {
+  const ValidationFailure({
+    super.message = 'The provided data is invalid.',
+    super.code,
+  });
+}
+
+/// Represents a missing-resource failure.
+class MissingResourceFailure extends AppFailure {
+  const MissingResourceFailure({
+    super.message = 'The required resource was not found.',
+    super.code,
+  });
+}
+
+/// Represents a file operation failure.
+class FileFailure extends AppFailure {
+  const FileFailure({
+    super.message = 'A file operation failed.',
+    super.code,
+  });
+}
+
+/// Represents an operation cancellation.
+class CancelledFailure extends AppFailure {
+  const CancelledFailure({
+    super.message = 'The operation was cancelled.',
+    super.code,
+  });
+}
+
+/// Represents an unexpected response failure.
+class UnexpectedResponseFailure extends AppFailure {
+  const UnexpectedResponseFailure({
+    super.message = 'Received an unexpected response.',
+    super.code,
+  });
+}
+
 ''';
   }
 
   static String getExceptionsTemplate() {
     return '''
-class ServerException implements Exception {
+
+/// Base exception for application-level errors.
+///
+/// Exceptions are generally thrown in the data layer and converted
+/// into Failures by repositories.
+abstract class AppException implements Exception {
   final String message;
-  const ServerException(this.message);
+  final String? code;
+
+  const AppException({
+    required this.message,
+    this.code,
+  });
+
+  @override
+  String toString() {
+    if (code != null) {
+      return '\$runtimeType(\$code): \$message';
+    }
+
+    return '\$runtimeType: \$message';
+  }
 }
 
-class CacheException implements Exception {
-  final String message;
-  const CacheException(this.message);
+/// Thrown when there is no internet/network connection.
+class NetworkException extends AppException {
+  const NetworkException({
+    super.message = 'No internet connection.',
+    super.code,
+  });
 }
 
-class NetworkException implements Exception {
-  final String message;
-  const NetworkException(this.message);
+/// Thrown when a request takes longer than the allowed time.
+class TimeoutException extends AppException {
+  const TimeoutException({
+    super.message = 'The request timed out.',
+    super.code,
+  });
+}
+
+/// Thrown when authentication is required or the access token is invalid.
+class UnauthorizedException extends AppException {
+  const UnauthorizedException({
+    super.message = 'Authentication is required.',
+    super.code,
+  });
+}
+
+/// Thrown when the authenticated user does not have permission.
+class ForbiddenException extends AppException {
+  const ForbiddenException({
+    super.message = 'You do not have permission to perform this action.',
+    super.code,
+  });
+}
+
+/// Thrown when the requested resource does not exist.
+class NotFoundException extends AppException {
+  const NotFoundException({
+    super.message = 'The requested resource was not found.',
+    super.code,
+  });
+}
+
+/// Thrown when the request is invalid.
+class BadRequestException extends AppException {
+  const BadRequestException({
+    super.message = 'The request was invalid.',
+    super.code,
+  });
+}
+
+/// Thrown when the server returns an unexpected error.
+class ServerException extends AppException {
+  const ServerException({
+    super.message = 'Something went wrong on the server.',
+    super.code,
+  });
+}
+
+/// Thrown when the API response cannot be parsed or decoded.
+class ParsingException extends AppException {
+  const ParsingException({
+    super.message = 'Failed to process the server response.',
+    super.code,
+  });
+}
+
+/// Thrown when local storage or cache operations fail.
+class CacheException extends AppException {
+  const CacheException({
+    super.message = 'Failed to access local data.',
+    super.code,
+  });
+}
+
+/// Thrown when a local database operation fails.
+class DatabaseException extends AppException {
+  const DatabaseException({
+    super.message = 'A database error occurred.',
+    super.code,
+  });
+}
+
+/// Thrown when input or request data is invalid.
+class ValidationException extends AppException {
+  const ValidationException({
+    super.message = 'The provided data is invalid.',
+    super.code,
+  });
+}
+
+/// Thrown when a required resource is missing.
+class MissingResourceException extends AppException {
+  const MissingResourceException({
+    super.message = 'The required resource was not found.',
+    super.code,
+  });
+}
+
+/// Thrown when a file operation fails.
+class FileException extends AppException {
+  const FileException({
+    super.message = 'A file operation failed.',
+    super.code,
+  });
+}
+
+/// Thrown when an operation is cancelled.
+class CancelledException extends AppException {
+  const CancelledException({
+    super.message = 'The operation was cancelled.',
+    super.code,
+  });
+}
+
+/// Thrown when the application receives an unexpected response.
+class UnexpectedResponseException extends AppException {
+  const UnexpectedResponseException({
+    super.message = 'Received an unexpected response.',
+    super.code,
+  });
 }
 ''';
   }
@@ -2908,7 +3193,7 @@ class ConnectionCheckerImpl implements ConnectionChecker {
   static String getDioClientTemplate() {
     return '''
 import 'package:dio/dio.dart';
-import '../../constants/apiendpoints.dart';
+import '../../constants/api_endpoints.dart';
 import '../api_response.dart';
 import 'dio_interceptor/logging_interceptor.dart';
 import '../handler/dio_exception_handler.dart';
@@ -3268,7 +3553,7 @@ class AppLogger {
   static String getCustomButtonTemplate() {
     return '''
 import 'package:flutter/material.dart';
-import '../theme/appcolors.dart';
+import '../theme/app_colors.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;
