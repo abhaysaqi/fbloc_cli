@@ -62,7 +62,8 @@ Final output looks like:
    📂 app/features/auth/
    📂 app/core/theme/
    📂 app/core/utils/
-   📂 app/core/service/
+   📂 app/core/errors/
+   📂 app/core/network/
    📂 app/routes/
 
 ➡️  Next steps:
@@ -141,8 +142,16 @@ lib/
   │       ├── model/
   │       └── view/
   ├── core/
-  │   ├── theme/
-  │   ├── utils/
-  │   └── service/
+  │   ├── di/
+  │   ├── constants/     # API endpoints, assets, texts
+  │   ├── errors/
+  │   │   └── handler/   # Unified AppExceptionHandler
+  │   ├── network/
+  │   │   └── client/    # Network client (Dio client & logger)
+  │   ├── storage/       # Local secure storage
+  │   ├── extensions/    # Date formatters, theme extensions
+  │   ├── theme/         # App Colors, Styles, and Themes
+  │   ├── utils/         # Helpers and Loggers
+  │   └── widgets/       # Custom standard UI widgets
   └── routes/
 ```
