@@ -198,8 +198,8 @@ class ProjectGenerator {
       TemplateUtils.getLoggingInterceptorTemplate(),
     );
     await FileUtils.writeFile(
-      path.join(basePath, 'core/network/handler/dio_exception_handler.dart'),
-      TemplateUtils.getDioExceptionHandlerTemplate(),
+      path.join(basePath, 'core/errors/handler/exception_handler.dart'),
+      TemplateUtils.getAppExceptionHandlerTemplate(),
     );
 
     // theme dir

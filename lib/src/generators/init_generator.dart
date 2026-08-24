@@ -82,7 +82,7 @@ class InitGenerator {
     // Create nested network directories if missing
     await _ensureDirectory(path.join(appBase, 'core/network/client'));
     await _ensureDirectory(path.join(appBase, 'core/network/client/dio_interceptor'));
-    await _ensureDirectory(path.join(appBase, 'core/network/handler'));
+    await _ensureDirectory(path.join(appBase, 'core/errors/handler'));
 
     // 3) Create core files if missing
 
@@ -134,8 +134,8 @@ class InitGenerator {
       TemplateUtils.getLoggingInterceptorTemplate(),
     );
     await _createFileIfMissing(
-      path.join(appBase, 'core/network/handler/dio_exception_handler.dart'),
-      TemplateUtils.getDioExceptionHandlerTemplate(),
+      path.join(appBase, 'core/errors/handler/exception_handler.dart'),
+      TemplateUtils.getAppExceptionHandlerTemplate(),
     );
 
     // theme dir
