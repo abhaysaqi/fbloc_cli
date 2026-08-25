@@ -3019,18 +3019,10 @@ class UnexpectedResponseFailure extends AppFailure {
 
 /// Represents an unknown failure.
 class UnknownFailure extends AppFailure {
-  const UnknownFailure([
+  const UnknownFailure({
     super.message = 'An unexpected error occurred.',
     super.code,
-  ]);
-}
-
-/// Represents an unknown failure.
-class UnknownFailure extends AppFailure {
-  const UnknownFailure([
-    super.message = 'An unexpected error occurred.',
-    super.code,
-  ]);
+  });
 }
 
 ''';
@@ -3184,18 +3176,10 @@ class UnexpectedResponseException extends AppException {
 
 /// Thrown when an unknown error occurs.
 class UnknownException extends AppException {
-  const UnknownException([
+  const UnknownException({
     super.message = 'An unexpected error occurred.',
     super.code,
-  ]);
-}
-
-/// Thrown when an unknown error occurs.
-class UnknownException extends AppException {
-  const UnknownException([
-    super.message = 'An unexpected error occurred.',
-    super.code,
-  ]);
+  });
 }
 ''';
   }
@@ -3228,6 +3212,7 @@ import 'package:dio/dio.dart';
 import '../../constants/api_endpoints.dart';
 import '../api_response.dart';
 import 'dio_interceptor/logging_interceptor.dart';
+import '../../errors/handler/exception_handler.dart';
 import '../../errors/handler/exception_handler.dart';
 
 class DioClient {
@@ -3278,7 +3263,9 @@ class DioClient {
       return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
       final ex = AppExceptionHandler.handle(e);
+      final ex = AppExceptionHandler.handle(e);
       return ApiResponse.error(
+        message: ex.message,
         message: ex.message,
         statusCode: e.response?.statusCode,
         data: e.response?.data,
@@ -3303,7 +3290,9 @@ class DioClient {
       return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
       final ex = AppExceptionHandler.handle(e);
+      final ex = AppExceptionHandler.handle(e);
       return ApiResponse.error(
+        message: ex.message,
         message: ex.message,
         statusCode: e.response?.statusCode,
         data: e.response?.data,
@@ -3328,7 +3317,9 @@ class DioClient {
       return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
       final ex = AppExceptionHandler.handle(e);
+      final ex = AppExceptionHandler.handle(e);
       return ApiResponse.error(
+        message: ex.message,
         message: ex.message,
         statusCode: e.response?.statusCode,
         data: e.response?.data,
@@ -3351,7 +3342,9 @@ class DioClient {
       return _wrapDioResponse<T>(res, fromJson);
     } on DioException catch (e) {
       final ex = AppExceptionHandler.handle(e);
+      final ex = AppExceptionHandler.handle(e);
       return ApiResponse.error(
+        message: ex.message,
         message: ex.message,
         statusCode: e.response?.statusCode,
         data: e.response?.data,
@@ -3408,13 +3401,39 @@ class LoggingInterceptor extends Interceptor {
   }
 
   static String getAppExceptionHandlerTemplate() {
+  static String getAppExceptionHandlerTemplate() {
     return '''
+import 'dart:io';
+
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 
 import '../exceptions.dart';
 
+import '../exceptions.dart';
+
+class AppExceptionHandler {
+  /// Converts any error (DioException, SocketException, etc.) into an [AppException].
+  static AppException handle(Object error) {
+    if (error is AppException) {
+      return error;
+    }
+
+    if (error is DioException) {
+      return _handleDioException(error);
+    }
+
+    if (error is SocketException) {
+      return const NetworkException(
+        message: 'No internet connection. Please try again.',
+      );
+    }
+
+    return UnknownException(message: error.toString());
+  }
+
+  static AppException _handleDioException(DioException dioException) {
 class AppExceptionHandler {
   /// Converts any error (DioException, SocketException, etc.) into an [AppException].
   static AppException handle(Object error) {
@@ -3441,6 +3460,20 @@ class AppExceptionHandler {
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.connectionError:
+        return const NetworkException(
+          message: 'Connection timed out. Check your internet connection.',
+        );
+
+      case DioExceptionType.badCertificate:
+        return const NetworkException(message: 'Invalid security certificate.');
+
+      case DioExceptionType.cancel:
+        return const UnknownException(message: 'Request was cancelled.');
+
+      case DioExceptionType.badResponse:
+        return _handleBadResponse(dioException.response);
+
+      case DioExceptionType.unknown:
         return const NetworkException(
           message: 'Connection timed out. Check your internet connection.',
         );
@@ -3505,6 +3538,55 @@ class AppExceptionHandler {
           message: errorMessage ?? 'Received invalid status code: \$statusCode',
           code: statusCode?.toString(),
         );
+        if (dioException.error is SocketException) {
+          return const NetworkException(
+            message: 'No internet connection. Please try again.',
+          );
+        }
+        return UnknownException(
+          message: dioException.message ?? 'An unexpected error occurred.',
+        );
+    }
+  }
+
+  static AppException _handleBadResponse(Response? response) {
+    final statusCode = response?.statusCode;
+    final errorMessage = _extractErrorMessage(response?.data);
+
+    switch (statusCode) {
+      case 400:
+        return ServerException(
+          message: errorMessage ?? 'Bad request.',
+          code: statusCode?.toString(),
+        );
+
+      case 401:
+      case 403:
+        return UnauthorizedException(
+          message: errorMessage ?? 'Unauthorized request or session expired.',
+          code: (statusCode ?? 401).toString(),
+        );
+
+      case 404:
+        return NotFoundException(
+          message: errorMessage ?? 'Requested resource was not found.',
+          code: (statusCode ?? 404).toString(),
+        );
+
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        return ServerException(
+          message: errorMessage ?? 'Server error occurred. Please try again later.',
+          code: statusCode?.toString(),
+        );
+
+      default:
+        return ServerException(
+          message: errorMessage ?? 'Received invalid status code: \$statusCode',
+          code: statusCode?.toString(),
+        );
     }
   }
 
@@ -3513,7 +3595,7 @@ class AppExceptionHandler {
     if (data == null) return null;
 
     if (data is Map<String, dynamic>) {
-      # If there's a nested validation error object, format it
+      // If there's a nested validation error object, format it
       if (data.containsKey('errors') && data['errors'] is Map) {
         final Map errors = data['errors'];
         return errors.values.expand((e) => e as List).join('\\n'); 
