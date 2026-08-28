@@ -189,18 +189,25 @@ class ProjectGenerator {
       path.join(basePath, 'core/network/api_response.dart'),
       TemplateUtils.getCommonResponseTemplate(),
     );
-    await FileUtils.writeFile(
-      path.join(basePath, 'core/network/client/dio_client.dart'),
-      TemplateUtils.getDioClientTemplate(),
-    );
-    await FileUtils.writeFile(
-      path.join(basePath, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
-      TemplateUtils.getLoggingInterceptorTemplate(),
-    );
-    await FileUtils.writeFile(
-      path.join(basePath, 'core/errors/handler/exception_handler.dart'),
-      TemplateUtils.getAppExceptionHandlerTemplate(),
-    );
+    if (config.networkPackage == 'dio') {
+      await FileUtils.writeFile(
+        path.join(basePath, 'core/network/client/dio_client.dart'),
+        TemplateUtils.getDioClientTemplate(),
+      );
+      await FileUtils.writeFile(
+        path.join(basePath, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
+        TemplateUtils.getLoggingInterceptorTemplate(),
+      );
+      await FileUtils.writeFile(
+        path.join(basePath, 'core/errors/handler/exception_handler.dart'),
+        TemplateUtils.getAppExceptionHandlerTemplate(),
+      );
+    } else {
+      await FileUtils.writeFile(
+        path.join(basePath, 'core/network/client/http_client.dart'),
+        TemplateUtils.getHttpClientTemplate(),
+      );
+    }
 
     // theme dir
     await FileUtils.writeFile(
@@ -283,7 +290,7 @@ class ProjectGenerator {
     // di dir
     await FileUtils.writeFile(
       path.join(basePath, 'core/di/injection_container.dart'),
-      TemplateUtils.getInjectionContainerTemplate(),
+      TemplateUtils.getInjectionContainerTemplate(config),
     );
   }
 

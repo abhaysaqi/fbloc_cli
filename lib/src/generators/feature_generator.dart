@@ -66,7 +66,7 @@ class FeatureGenerator {
     }
 
     // Generate Datasource files
-    await _generateDatasourceFiles(basePath, featureName);
+    await _generateDatasourceFiles(basePath, featureName, config);
 
     // Generate Repository files
     await _generateRepositoryFiles(basePath, featureName);
@@ -262,10 +262,10 @@ class FeatureGenerator {
   }
 
   static Future<void> _generateDatasourceFiles(
-      String basePath, String featureName) async {
+      String basePath, String featureName, CliConfig config) async {
     await FileUtils.writeFile(
       path.join(basePath, 'datasource', '${featureName}_datasource.dart'),
-      TemplateUtils.getDatasourceTemplate(featureName),
+      TemplateUtils.getDatasourceTemplate(featureName, config),
     );
   }
 

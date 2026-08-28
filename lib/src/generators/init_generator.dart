@@ -125,18 +125,25 @@ class InitGenerator {
       path.join(appBase, 'core/network/api_response.dart'),
       TemplateUtils.getCommonResponseTemplate(),
     );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/network/client/dio_client.dart'),
-      TemplateUtils.getDioClientTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
-      TemplateUtils.getLoggingInterceptorTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/errors/handler/exception_handler.dart'),
-      TemplateUtils.getAppExceptionHandlerTemplate(),
-    );
+    if (config.networkPackage == 'dio') {
+      await _createFileIfMissing(
+        path.join(appBase, 'core/network/client/dio_client.dart'),
+        TemplateUtils.getDioClientTemplate(),
+      );
+      await _createFileIfMissing(
+        path.join(appBase, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
+        TemplateUtils.getLoggingInterceptorTemplate(),
+      );
+      await _createFileIfMissing(
+        path.join(appBase, 'core/errors/handler/exception_handler.dart'),
+        TemplateUtils.getAppExceptionHandlerTemplate(),
+      );
+    } else {
+      await _createFileIfMissing(
+        path.join(appBase, 'core/network/client/http_client.dart'),
+        TemplateUtils.getHttpClientTemplate(),
+      );
+    }
 
     // theme dir
     await _createFileIfMissing(
@@ -219,7 +226,7 @@ class InitGenerator {
     // di dir
     await _createFileIfMissing(
       path.join(appBase, 'core/di/injection_container.dart'),
-      TemplateUtils.getInjectionContainerTemplate(),
+      TemplateUtils.getInjectionContainerTemplate(config),
     );
 
     // 4) Create routing helpers if missing

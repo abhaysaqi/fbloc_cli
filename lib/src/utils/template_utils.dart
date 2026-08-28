@@ -58,6 +58,12 @@ flutter:
         ? "import 'app/features/home/$stateFolder/home_event.dart';"
         : '';
 
+    final isDio = config.networkPackage == 'dio';
+    final clientClass = isDio ? 'DioClient' : 'HttpClient';
+    final clientImport = isDio
+        ? "import 'app/core/network/client/dio_client.dart';"
+        : "import 'app/core/network/client/http_client.dart';";
+
     if (config.navigation == 'go_router') {
       return '''
 import 'package:flutter/material.dart';
@@ -70,7 +76,7 @@ import 'app/features/auth/repository/auth_repository.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/datasource/home_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
-import 'app/core/network/client/dio_client.dart';
+$clientImport
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
 $homeBlocEventImport
@@ -88,10 +94,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<DioClient>(create: (_) => di.sl<DioClient>()),
-        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
+        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<$clientClass>())),
         RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthDatasource>())),
-        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<$clientClass>())),
         RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeDatasource>())),
       ],
       child: MultiBlocProvider(
@@ -126,7 +132,7 @@ import 'app/features/auth/repository/auth_repository.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
 import 'app/features/home/datasource/home_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
-import 'app/core/network/client/dio_client.dart';
+$clientImport
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
 $homeBlocEventImport
@@ -144,10 +150,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<DioClient>(create: (_) => di.sl<DioClient>()),
-        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
+        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<$clientClass>())),
         RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthDatasource>())),
-        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<DioClient>())),
+        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<$clientClass>())),
         RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeDatasource>())),
       ],
       child: MultiBlocProvider(
@@ -1029,10 +1035,20 @@ class ${pascalName}Error extends ${pascalName}State {
 ''';
   }
 
-  static String getDatasourceTemplate(String featureName) {
+  static String getDatasourceTemplate(String featureName, CliConfig config) {
     final pascalName = FileUtils.toPascalCase(featureName);
+    final isDio = config.networkPackage == 'dio';
+    final isHome = featureName == 'home';
+    final dioEndpointList = isHome ? 'ApiEndpoints.homes' : "'/$featureName'";
+    final dioEndpointById = isHome ? 'ApiEndpoints.homeById(id)' : "'/$featureName/\$id'";
+    final dioEndpointByModelId = isHome ? 'ApiEndpoints.homeById($featureName.id)' : "'/$featureName/\${$featureName.id}'";
 
-    return '''
+    final httpEndpointList = isHome ? '\${ApiEndpoints.baseUrl}\${ApiEndpoints.homes}' : '\${ApiEndpoints.baseUrl}/$featureName';
+    final httpEndpointById = isHome ? '\${ApiEndpoints.baseUrl}\${ApiEndpoints.homeById(id)}' : '\${ApiEndpoints.baseUrl}/$featureName/\$id';
+    final httpEndpointByModelId = isHome ? '\${ApiEndpoints.baseUrl}\${ApiEndpoints.homeById($featureName.id)}' : '\${ApiEndpoints.baseUrl}/$featureName/\${$featureName.id}';
+
+    if (isDio) {
+      return '''
 import '../../../core/network/client/dio_client.dart';
 import '../model/${featureName}_model.dart';
 import '../../../core/network/api_response.dart';
@@ -1053,52 +1069,189 @@ class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
 
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
-    final response = await _dioClient.get<List<${pascalName}Model>>(
-      endpoint: '\${ApiEndpoints.${featureName}s}?page=\$page&limit=\$limit',
-      fromJson: (data) => (data as List).map((item) => ${pascalName}Model.fromJson(item)).toList(),
-    );
-    return response;
+    try {
+      final response = await _dioClient.dio.get(
+        '\${$dioEndpointList}?page=\$page&limit=\$limit',
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        final list = (response.data as List).map((item) => ${pascalName}Model.fromJson(item)).toList();
+        return ApiResponse.success(data: list);
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to fetch data', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
   }
 
   @override
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
-    final response = await _dioClient.get<${pascalName}Model>(
-      endpoint: ApiEndpoints.${featureName}ById(id),
-      fromJson: (data) => ${pascalName}Model.fromJson(data),
-    );
-    return response;
+    try {
+      final response = await _dioClient.dio.get(
+        $dioEndpointById,
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return ApiResponse.success(data: ${pascalName}Model.fromJson(response.data));
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to fetch item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
   }
 
   @override
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
-    final response = await _dioClient.post<${pascalName}Model>(
-      endpoint: ApiEndpoints.${featureName}s,
-      data: $featureName.toJson(),
-      fromJson: (data) => ${pascalName}Model.fromJson(data),
-    );
-    return response;
+    try {
+      final response = await _dioClient.dio.post(
+        $dioEndpointList,
+        data: $featureName.toJson(),
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return ApiResponse.success(data: ${pascalName}Model.fromJson(response.data));
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to create item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
   }
 
   @override
   Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
-    final response = await _dioClient.post<${pascalName}Model>(
-      endpoint: ApiEndpoints.${featureName}ById($featureName.id),
-      data: $featureName.toJson(),
-      fromJson: (data) => ${pascalName}Model.fromJson(data),
-    );
-    return response;
+    try {
+      final response = await _dioClient.dio.put(
+        $dioEndpointByModelId,
+        data: $featureName.toJson(),
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return ApiResponse.success(data: ${pascalName}Model.fromJson(response.data));
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to update item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
   }
 
   @override
   Future<ApiResponse<void>> delete$pascalName(String id) async {
-    final response = await _dioClient.get<void>(
-      endpoint: ApiEndpoints.${featureName}ById(id),
-      fromJson: null,
-    );
-    return response;
+    try {
+      final response = await _dioClient.dio.delete(
+        $dioEndpointById,
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return ApiResponse.success();
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to delete item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
   }
 }
 ''';
+    } else {
+      return '''
+import 'dart:convert';
+import '../../../core/network/client/http_client.dart';
+import '../model/${featureName}_model.dart';
+import '../../../core/network/api_response.dart';
+import '../../../core/constants/api_endpoints.dart';
+
+abstract class ${pascalName}Datasource {
+  Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
+  Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id);
+  Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName);
+  Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName);
+  Future<ApiResponse<void>> delete$pascalName(String id);
+}
+
+class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
+  final HttpClient _httpClient;
+
+  ${pascalName}DatasourceImpl(this._httpClient);
+
+  @override
+  Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
+    try {
+      final uri = Uri.parse('$httpEndpointList?page=\$page&limit=\$limit');
+      final response = await _httpClient.client.get(uri);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as List;
+        final list = data.map((item) => ${pascalName}Model.fromJson(item)).toList();
+        return ApiResponse.success(data: list);
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to fetch data', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
+    try {
+      final uri = Uri.parse('$httpEndpointById');
+      final response = await _httpClient.client.get(uri);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return ApiResponse.success(data: ${pascalName}Model.fromJson(data));
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to fetch item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
+    try {
+      final uri = Uri.parse('$httpEndpointList');
+      final response = await _httpClient.client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode($featureName.toJson()),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return ApiResponse.success(data: ${pascalName}Model.fromJson(data));
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to create item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
+    try {
+      final uri = Uri.parse('$httpEndpointByModelId');
+      final response = await _httpClient.client.put(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode($featureName.toJson()),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return ApiResponse.success(data: ${pascalName}Model.fromJson(data));
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to update item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<void>> delete$pascalName(String id) async {
+    try {
+      final uri = Uri.parse('$httpEndpointById');
+      final response = await _httpClient.client.delete(uri);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return ApiResponse.success();
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to delete item', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+}
+''';
+    }
   }
 
   static String getRepositoryTemplate(String featureName) {
@@ -1386,6 +1539,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../$stateFolder/${featureName}_${config.stateManagement}.dart';
 import '../$stateFolder/${featureName}_state.dart';
 $eventImport
+import '../../../core/constants/app_texts.dart';
 
 class $pascalViewName extends StatelessWidget {
   const $pascalViewName({super.key});
@@ -1673,7 +1827,10 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refres
 // ============ AUTH REPOSITORY ============
 
   static String getAuthDatasourceTemplate(CliConfig config) {
-    return '''
+    final isDio = config.networkPackage == 'dio';
+
+    if (isDio) {
+      return '''
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_response.dart';
 import '../../../core/network/client/dio_client.dart';
@@ -1698,11 +1855,14 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
     try {
-      final response = await _dioClient.post(endpoint: ApiEndpoints.login, data: {'email': email, 'password': password});
-      if (response.success && response.data != null) {
+      final response = await _dioClient.dio.post(
+        ApiEndpoints.login,
+        data: {'email': email, 'password': password},
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
         return ApiResponse.success(data: AuthTokens.fromJson(response.data));
       }
-      return ApiResponse.error(message: response.message);
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to sign in', statusCode: response.statusCode);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
     }
@@ -1711,11 +1871,14 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
     try {
-      final response = await _dioClient.post(endpoint: ApiEndpoints.register, data: {'name': name, 'email': email, 'password': password});
-      if (response.success && response.data != null) {
+      final response = await _dioClient.dio.post(
+        ApiEndpoints.register,
+        data: {'name': name, 'email': email, 'password': password},
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
         return ApiResponse.success(data: AuthTokens.fromJson(response.data));
       }
-      return ApiResponse.error(message: response.message);
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to register', statusCode: response.statusCode);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
     }
@@ -1724,8 +1887,15 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<ApiResponse<String>> requestPasswordReset(String email) async {
     try {
-      final response = await _dioClient.post(endpoint: ApiEndpoints.forgotPassword, data: {'email': email});
-      return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
+      final response = await _dioClient.dio.post(
+        ApiEndpoints.forgotPassword,
+        data: {'email': email},
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        final msg = response.data is Map ? (response.data['message'] ?? 'Password reset requested') : 'Password reset requested';
+        return ApiResponse.success(data: msg);
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to request password reset', statusCode: response.statusCode);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
     }
@@ -1734,8 +1904,15 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
     try {
-      final response = await _dioClient.post(endpoint: ApiEndpoints.verifyOtp, data: {'email': email, 'otp': otp});
-      return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
+      final response = await _dioClient.dio.post(
+        ApiEndpoints.verifyOtp,
+        data: {'email': email, 'otp': otp},
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        final msg = response.data is Map ? (response.data['message'] ?? 'OTP verified') : 'OTP verified';
+        return ApiResponse.success(data: msg);
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to verify OTP', statusCode: response.statusCode);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
     }
@@ -1744,8 +1921,15 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
     try {
-      final response = await _dioClient.post(endpoint: ApiEndpoints.resetPassword, data: {'email': email, 'otp': otp, 'newPassword': newPassword});
-      return response.success ? ApiResponse.success(data: response.message) : ApiResponse.error(message: response.message);
+      final response = await _dioClient.dio.post(
+        ApiEndpoints.resetPassword,
+        data: {'email': email, 'otp': otp, 'newPassword': newPassword},
+      );
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        final msg = response.data is Map ? (response.data['message'] ?? 'Password reset successfully') : 'Password reset successfully';
+        return ApiResponse.success(data: msg);
+      }
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to reset password', statusCode: response.statusCode);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
     }
@@ -1754,11 +1938,11 @@ class AuthDatasourceImpl implements AuthDatasource {
   @override
   Future<ApiResponse<UserModel>> getCurrentUser() async {
     try {
-      final response = await _dioClient.get(endpoint: ApiEndpoints.profile);
-      if (response.success && response.data != null) {
+      final response = await _dioClient.dio.get(ApiEndpoints.profile);
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
         return ApiResponse.success(data: UserModel.fromJson(response.data));
       }
-      return ApiResponse.error(message: response.message);
+      return ApiResponse.error(message: response.statusMessage ?? 'Failed to get current user', statusCode: response.statusCode);
     } catch (e) {
       return ApiResponse.error(message: e.toString());
     }
@@ -1770,6 +1954,150 @@ class AuthDatasourceImpl implements AuthDatasource {
   }
 }
 ''';
+    } else {
+      return '''
+import 'dart:convert';
+import '../../../core/constants/api_endpoints.dart';
+import '../../../core/network/api_response.dart';
+import '../../../core/network/client/http_client.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
+
+abstract class AuthDatasource {
+  Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
+  Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password});
+  Future<ApiResponse<String>> requestPasswordReset(String email);
+  Future<ApiResponse<String>> verifyOtp({required String email, required String otp});
+  Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword});
+  Future<ApiResponse<UserModel>> getCurrentUser();
+  Future<void> logout();
+}
+
+class AuthDatasourceImpl implements AuthDatasource {
+  final HttpClient _httpClient;
+
+  AuthDatasourceImpl(this._httpClient);
+
+  @override
+  Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\${ApiEndpoints.login}');
+      final response = await _httpClient.client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return ApiResponse.success(data: AuthTokens.fromJson(data));
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to sign in', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\${ApiEndpoints.register}');
+      final response = await _httpClient.client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': name, 'email': email, 'password': password}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return ApiResponse.success(data: AuthTokens.fromJson(data));
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to register', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<String>> requestPasswordReset(String email) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\${ApiEndpoints.forgotPassword}');
+      final response = await _httpClient.client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final msg = data is Map ? (data['message'] ?? 'Password reset requested') : 'Password reset requested';
+        return ApiResponse.success(data: msg);
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to request reset', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\${ApiEndpoints.verifyOtp}');
+      final response = await _httpClient.client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'otp': otp}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final msg = data is Map ? (data['message'] ?? 'OTP verified') : 'OTP verified';
+        return ApiResponse.success(data: msg);
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to verify OTP', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\${ApiEndpoints.resetPassword}');
+      final response = await _httpClient.client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'otp': otp, 'newPassword': newPassword}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final msg = data is Map ? (data['message'] ?? 'Password reset successfully') : 'Password reset successfully';
+        return ApiResponse.success(data: msg);
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to reset password', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<ApiResponse<UserModel>> getCurrentUser() async {
+    try {
+      final uri = Uri.parse('\${ApiEndpoints.baseUrl}\${ApiEndpoints.profile}');
+      final response = await _httpClient.client.get(uri);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return ApiResponse.success(data: UserModel.fromJson(data));
+      }
+      return ApiResponse.error(message: response.reasonPhrase ?? 'Failed to get current user', statusCode: response.statusCode);
+    } catch (e) {
+      return ApiResponse.error(message: e.toString());
+    }
+  }
+
+  @override
+  Future<void> logout() async {
+    // Clear stored tokens
+  }
+}
+''';
+    }
   }
 
   static String getAuthRepositoryTemplate(CliConfig config) {
@@ -3210,10 +3538,7 @@ class ConnectionCheckerImpl implements ConnectionChecker {
     return '''
 import 'package:dio/dio.dart';
 import '../../constants/api_endpoints.dart';
-import '../api_response.dart';
 import 'dio_interceptor/logging_interceptor.dart';
-import '../../errors/handler/exception_handler.dart';
-import '../../errors/handler/exception_handler.dart';
 
 class DioClient {
   static final DioClient _instance = DioClient._internal();
@@ -3247,128 +3572,29 @@ class DioClient {
   }
 
   Dio get dio => _dio;
-
-  Future<ApiResponse<T>> get<T>({
-    required String endpoint,
-    Map<String, dynamic>? query,
-    Map<String, String>? headers,
-    T Function(dynamic)? fromJson,
-  }) async {
-    try {
-      final res = await _dio.get(
-        endpoint,
-        queryParameters: query,
-        options: Options(headers: headers),
-      );
-      return _wrapDioResponse<T>(res, fromJson);
-    } on DioException catch (e) {
-      final ex = AppExceptionHandler.handle(e);
-      final ex = AppExceptionHandler.handle(e);
-      return ApiResponse.error(
-        message: ex.message,
-        message: ex.message,
-        statusCode: e.response?.statusCode,
-        data: e.response?.data,
-      );
-    }
+}
+''';
   }
 
-  Future<ApiResponse<T>> post<T>({
-    required String endpoint,
-    dynamic data,
-    Map<String, dynamic>? query,
-    Map<String, String>? headers,
-    T Function(dynamic)? fromJson,
-  }) async {
-    try {
-      final res = await _dio.post(
-        endpoint,
-        data: data,
-        queryParameters: query,
-        options: Options(headers: headers),
-      );
-      return _wrapDioResponse<T>(res, fromJson);
-    } on DioException catch (e) {
-      final ex = AppExceptionHandler.handle(e);
-      final ex = AppExceptionHandler.handle(e);
-      return ApiResponse.error(
-        message: ex.message,
-        message: ex.message,
-        statusCode: e.response?.statusCode,
-        data: e.response?.data,
-      );
+  static String getHttpClientTemplate() {
+    return '''
+import 'package:http/http.dart' as http;
+
+class HttpClient {
+  static final HttpClient _instance = HttpClient._internal();
+  factory HttpClient({http.Client? client}) {
+    if (client != null) {
+      return HttpClient._custom(client);
     }
+    return _instance;
   }
 
-  Future<ApiResponse<T>> put<T>({
-    required String endpoint,
-    dynamic data,
-    Map<String, dynamic>? query,
-    Map<String, String>? headers,
-    T Function(dynamic)? fromJson,
-  }) async {
-    try {
-      final res = await _dio.put(
-        endpoint,
-        data: data,
-        queryParameters: query,
-        options: Options(headers: headers),
-      );
-      return _wrapDioResponse<T>(res, fromJson);
-    } on DioException catch (e) {
-      final ex = AppExceptionHandler.handle(e);
-      final ex = AppExceptionHandler.handle(e);
-      return ApiResponse.error(
-        message: ex.message,
-        message: ex.message,
-        statusCode: e.response?.statusCode,
-        data: e.response?.data,
-      );
-    }
-  }
+  HttpClient._internal() : _client = http.Client();
+  HttpClient._custom(http.Client client) : _client = client;
 
-  Future<ApiResponse<T>> delete<T>({
-    required String endpoint,
-    Map<String, dynamic>? query,
-    Map<String, String>? headers,
-    T Function(dynamic)? fromJson,
-  }) async {
-    try {
-      final res = await _dio.delete(
-        endpoint,
-        queryParameters: query,
-        options: Options(headers: headers),
-      );
-      return _wrapDioResponse<T>(res, fromJson);
-    } on DioException catch (e) {
-      final ex = AppExceptionHandler.handle(e);
-      final ex = AppExceptionHandler.handle(e);
-      return ApiResponse.error(
-        message: ex.message,
-        message: ex.message,
-        statusCode: e.response?.statusCode,
-        data: e.response?.data,
-      );
-    }
-  }
+  final http.Client _client;
 
-  ApiResponse<T> _wrapDioResponse<T>(Response res, T Function(dynamic)? fromJson) {
-    final ok = res.statusCode != null && res.statusCode! >= 200 && res.statusCode! < 300;
-    if (ok) {
-      final raw = res.data;
-      final parsed = fromJson != null ? fromJson(raw) : raw as T;
-      return ApiResponse.success(
-        data: parsed,
-        message: res.statusMessage,
-        statusCode: res.statusCode,
-      );
-    }
-    return ApiResponse.error(
-      message: res.statusMessage ?? 'API Error',
-      statusCode: res.statusCode,
-      data: res.data,
-    );
-  }
+  http.Client get client => _client;
 }
 ''';
   }
@@ -3401,39 +3627,11 @@ class LoggingInterceptor extends Interceptor {
   }
 
   static String getAppExceptionHandlerTemplate() {
-  static String getAppExceptionHandlerTemplate() {
     return '''
 import 'dart:io';
-
-import 'dart:io';
-
 import 'package:dio/dio.dart';
-
 import '../exceptions.dart';
 
-import '../exceptions.dart';
-
-class AppExceptionHandler {
-  /// Converts any error (DioException, SocketException, etc.) into an [AppException].
-  static AppException handle(Object error) {
-    if (error is AppException) {
-      return error;
-    }
-
-    if (error is DioException) {
-      return _handleDioException(error);
-    }
-
-    if (error is SocketException) {
-      return const NetworkException(
-        message: 'No internet connection. Please try again.',
-      );
-    }
-
-    return UnknownException(message: error.toString());
-  }
-
-  static AppException _handleDioException(DioException dioException) {
 class AppExceptionHandler {
   /// Converts any error (DioException, SocketException, etc.) into an [AppException].
   static AppException handle(Object error) {
@@ -3474,70 +3672,7 @@ class AppExceptionHandler {
         return _handleBadResponse(dioException.response);
 
       case DioExceptionType.unknown:
-        return const NetworkException(
-          message: 'Connection timed out. Check your internet connection.',
-        );
-
-      case DioExceptionType.badCertificate:
-        return const NetworkException(message: 'Invalid security certificate.');
-
-      case DioExceptionType.cancel:
-        return const UnknownException(message: 'Request was cancelled.');
-
-      case DioExceptionType.badResponse:
-        return _handleBadResponse(dioException.response);
-
-      case DioExceptionType.unknown:
       default:
-        if (dioException.error is SocketException) {
-          return const NetworkException(
-            message: 'No internet connection. Please try again.',
-          );
-        }
-        return UnknownException(
-          message: dioException.message ?? 'An unexpected error occurred.',
-        );
-    }
-  }
-
-  static AppException _handleBadResponse(Response? response) {
-    final statusCode = response?.statusCode;
-    final errorMessage = _extractErrorMessage(response?.data);
-
-    switch (statusCode) {
-      case 400:
-        return ServerException(
-          message: errorMessage ?? 'Bad request.',
-          code: statusCode?.toString(),
-        );
-
-      case 401:
-      case 403:
-        return UnauthorizedException(
-          message: errorMessage ?? 'Unauthorized request or session expired.',
-          code: (statusCode ?? 401).toString(),
-        );
-
-      case 404:
-        return NotFoundException(
-          message: errorMessage ?? 'Requested resource was not found.',
-          code: (statusCode ?? 404).toString(),
-        );
-
-      case 500:
-      case 502:
-      case 503:
-      case 504:
-        return ServerException(
-          message: errorMessage ?? 'Server error occurred. Please try again later.',
-          code: statusCode?.toString(),
-        );
-
-      default:
-        return ServerException(
-          message: errorMessage ?? 'Received invalid status code: \$statusCode',
-          code: statusCode?.toString(),
-        );
         if (dioException.error is SocketException) {
           return const NetworkException(
             message: 'No internet connection. Please try again.',
@@ -3951,8 +4086,10 @@ class SocialButton extends StatelessWidget {
 ''';
   }
 
-  static String getInjectionContainerTemplate() {
-    return '''
+  static String getInjectionContainerTemplate(CliConfig config) {
+    final isDio = config.networkPackage == 'dio';
+    if (isDio) {
+      return '''
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -3973,6 +4110,29 @@ Future<void> init() async {
   sl.registerLazySingleton(() => SecureStorageService(storage: sl()));
 }
 ''';
+    } else {
+      return '''
+import 'package:get_it/get_it.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../network/client/http_client.dart';
+import '../network/connection_checker.dart';
+import '../storage/secure_storage_service.dart';
+
+final sl = GetIt.instance;
+
+Future<void> init() async {
+  // External
+  sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => const FlutterSecureStorage());
+
+  // Core
+  sl.registerLazySingleton<ConnectionChecker>(() => ConnectionCheckerImpl());
+  sl.registerLazySingleton(() => HttpClient(client: sl()));
+  sl.registerLazySingleton(() => SecureStorageService(storage: sl()));
+}
+''';
+    }
   }
 
   static String getAppConfigTemplate() {
