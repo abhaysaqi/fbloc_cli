@@ -71,12 +71,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
-import 'app/features/auth/datasource/auth_datasource.dart';
+import 'app/features/auth/datasource/auth_remote_datasource.dart';
+import 'app/features/auth/datasource/auth_local_datasource.dart';
 import 'app/features/auth/repository/auth_repository.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
-import 'app/features/home/datasource/home_datasource.dart';
+import 'app/features/home/datasource/home_remote_datasource.dart';
+import 'app/features/home/datasource/home_local_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
 $clientImport
+import 'app/core/storage/secure_storage_service.dart';
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
 $homeBlocEventImport
@@ -95,10 +98,13 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
-        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthDatasource>())),
-        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeDatasource>())),
+        RepositoryProvider<SecureStorageService>(create: (_) => di.sl<SecureStorageService>()),
+        RepositoryProvider<AuthRemoteDatasource>(create: (context) => AuthRemoteDatasourceImpl(context.read<$clientClass>())),
+        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthRemoteDatasource>(), context.read<AuthLocalDatasource>())),
+        RepositoryProvider<HomeRemoteDatasource>(create: (context) => HomeRemoteDatasourceImpl(context.read<$clientClass>())),
+        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeRemoteDatasource>(), context.read<HomeLocalDatasource>())),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -127,12 +133,15 @@ import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/routes/route_names.dart';
 import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
-import 'app/features/auth/datasource/auth_datasource.dart';
+import 'app/features/auth/datasource/auth_remote_datasource.dart';
+import 'app/features/auth/datasource/auth_local_datasource.dart';
 import 'app/features/auth/repository/auth_repository.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
-import 'app/features/home/datasource/home_datasource.dart';
+import 'app/features/home/datasource/home_remote_datasource.dart';
+import 'app/features/home/datasource/home_local_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
 $clientImport
+import 'app/core/storage/secure_storage_service.dart';
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
 $homeBlocEventImport
@@ -151,10 +160,13 @@ class MyApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
-        RepositoryProvider<AuthDatasource>(create: (context) => AuthDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthDatasource>())),
-        RepositoryProvider<HomeDatasource>(create: (context) => HomeDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeDatasource>())),
+        RepositoryProvider<SecureStorageService>(create: (_) => di.sl<SecureStorageService>()),
+        RepositoryProvider<AuthRemoteDatasource>(create: (context) => AuthRemoteDatasourceImpl(context.read<$clientClass>())),
+        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthRemoteDatasource>(), context.read<AuthLocalDatasource>())),
+        RepositoryProvider<HomeRemoteDatasource>(create: (context) => HomeRemoteDatasourceImpl(context.read<$clientClass>())),
+        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeRemoteDatasource>(), context.read<HomeLocalDatasource>())),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -1035,7 +1047,7 @@ class ${pascalName}Error extends ${pascalName}State {
 ''';
   }
 
-  static String getDatasourceTemplate(String featureName, CliConfig config) {
+  static String getRemoteDatasourceTemplate(String featureName, CliConfig config) {
     final pascalName = FileUtils.toPascalCase(featureName);
     final isDio = config.networkPackage == 'dio';
     final isHome = featureName == 'home';
@@ -1054,7 +1066,7 @@ import '../model/${featureName}_model.dart';
 import '../../../core/network/api_response.dart';
 import '../../../core/constants/api_endpoints.dart';
 
-abstract class ${pascalName}Datasource {
+abstract class ${pascalName}RemoteDatasource {
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id);
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName);
@@ -1062,10 +1074,10 @@ abstract class ${pascalName}Datasource {
   Future<ApiResponse<void>> delete$pascalName(String id);
 }
 
-class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
+class ${pascalName}RemoteDatasourceImpl implements ${pascalName}RemoteDatasource {
   final DioClient _dioClient;
 
-  ${pascalName}DatasourceImpl(this._dioClient);
+  ${pascalName}RemoteDatasourceImpl(this._dioClient);
 
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
@@ -1154,7 +1166,7 @@ import '../model/${featureName}_model.dart';
 import '../../../core/network/api_response.dart';
 import '../../../core/constants/api_endpoints.dart';
 
-abstract class ${pascalName}Datasource {
+abstract class ${pascalName}RemoteDatasource {
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id);
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName);
@@ -1162,10 +1174,10 @@ abstract class ${pascalName}Datasource {
   Future<ApiResponse<void>> delete$pascalName(String id);
 }
 
-class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
+class ${pascalName}RemoteDatasourceImpl implements ${pascalName}RemoteDatasource {
   final HttpClient _httpClient;
 
-  ${pascalName}DatasourceImpl(this._httpClient);
+  ${pascalName}RemoteDatasourceImpl(this._httpClient);
 
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
@@ -1254,13 +1266,60 @@ class ${pascalName}DatasourceImpl implements ${pascalName}Datasource {
     }
   }
 
+  static String getLocalDatasourceTemplate(String featureName, CliConfig config) {
+    final pascalName = FileUtils.toPascalCase(featureName);
+
+    return '''
+import 'dart:convert';
+import '../../../core/storage/secure_storage_service.dart';
+import '../../../core/storage/storage_keys.dart';
+import '../model/${featureName}_model.dart';
+
+abstract class ${pascalName}LocalDatasource {
+  Future<void> cache${pascalName}s(List<${pascalName}Model> items);
+  Future<List<${pascalName}Model>> getCached${pascalName}s();
+  Future<void> clearCache();
+}
+
+class ${pascalName}LocalDatasourceImpl implements ${pascalName}LocalDatasource {
+  final SecureStorageService _storage;
+
+  ${pascalName}LocalDatasourceImpl(this._storage);
+
+  @override
+  Future<void> cache${pascalName}s(List<${pascalName}Model> items) async {
+    final jsonString = jsonEncode(items.map((e) => e.toJson()).toList());
+    await _storage.write(StorageKeys.token, jsonString);
+  }
+
+  @override
+  Future<List<${pascalName}Model>> getCached${pascalName}s() async {
+    final raw = await _storage.read(StorageKeys.token);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final list = jsonDecode(raw) as List;
+      return list.map((item) => ${pascalName}Model.fromJson(item)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<void> clearCache() async {
+    await _storage.delete(StorageKeys.token);
+  }
+}
+''';
+  }
+
   static String getRepositoryTemplate(String featureName) {
     final pascalName = FileUtils.toPascalCase(featureName);
 
     return '''
 import '../model/${featureName}_model.dart';
 import '../../../core/network/api_response.dart';
-import '../datasource/${featureName}_datasource.dart';
+import '../datasource/${featureName}_remote_datasource.dart';
+import '../datasource/${featureName}_local_datasource.dart';
 
 abstract class ${pascalName}Repository {
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10});
@@ -1271,33 +1330,38 @@ abstract class ${pascalName}Repository {
 }
 
 class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
-  final ${pascalName}Datasource _datasource;
+  final ${pascalName}RemoteDatasource _remoteDatasource;
+  final ${pascalName}LocalDatasource _localDatasource;
 
-  ${pascalName}RepositoryImpl(this._datasource);
+  ${pascalName}RepositoryImpl(this._remoteDatasource, this._localDatasource);
 
   @override
   Future<ApiResponse<List<${pascalName}Model>>> get${pascalName}s({int page = 1, int limit = 10}) async {
-    return await _datasource.get${pascalName}s(page: page, limit: limit);
+    final response = await _remoteDatasource.get${pascalName}s(page: page, limit: limit);
+    if (response.success && response.data != null) {
+      await _localDatasource.cache${pascalName}s(response.data!);
+    }
+    return response;
   }
 
   @override
   Future<ApiResponse<${pascalName}Model>> get${pascalName}ById(String id) async {
-    return await _datasource.get${pascalName}ById(id);
+    return await _remoteDatasource.get${pascalName}ById(id);
   }
 
   @override
   Future<ApiResponse<${pascalName}Model>> create$pascalName(${pascalName}Model $featureName) async {
-    return await _datasource.create$pascalName($featureName);
+    return await _remoteDatasource.create$pascalName($featureName);
   }
 
   @override
   Future<ApiResponse<${pascalName}Model>> update$pascalName(${pascalName}Model $featureName) async {
-    return await _datasource.update$pascalName($featureName);
+    return await _remoteDatasource.update$pascalName($featureName);
   }
 
   @override
   Future<ApiResponse<void>> delete$pascalName(String id) async {
-    return await _datasource.delete$pascalName(id);
+    return await _remoteDatasource.delete$pascalName(id);
   }
 }
 ''';
@@ -1826,7 +1890,7 @@ ${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refres
 
 // ============ AUTH REPOSITORY ============
 
-  static String getAuthDatasourceTemplate(CliConfig config) {
+  static String getAuthRemoteDatasourceTemplate(CliConfig config) {
     final isDio = config.networkPackage == 'dio';
 
     if (isDio) {
@@ -1837,7 +1901,7 @@ import '../../../core/network/client/dio_client.dart';
 import '../model/auth_tokens.dart';
 import '../model/user_model.dart';
 
-abstract class AuthDatasource {
+abstract class AuthRemoteDatasource {
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password});
   Future<ApiResponse<String>> requestPasswordReset(String email);
@@ -1847,10 +1911,10 @@ abstract class AuthDatasource {
   Future<void> logout();
 }
 
-class AuthDatasourceImpl implements AuthDatasource {
+class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
   final DioClient _dioClient;
 
-  AuthDatasourceImpl(this._dioClient);
+  AuthRemoteDatasourceImpl(this._dioClient);
 
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
@@ -1950,7 +2014,7 @@ class AuthDatasourceImpl implements AuthDatasource {
 
   @override
   Future<void> logout() async {
-    // Clear stored tokens
+    // Remote logout call if any
   }
 }
 ''';
@@ -1963,7 +2027,7 @@ import '../../../core/network/client/http_client.dart';
 import '../model/auth_tokens.dart';
 import '../model/user_model.dart';
 
-abstract class AuthDatasource {
+abstract class AuthRemoteDatasource {
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password});
   Future<ApiResponse<String>> requestPasswordReset(String email);
@@ -1973,10 +2037,10 @@ abstract class AuthDatasource {
   Future<void> logout();
 }
 
-class AuthDatasourceImpl implements AuthDatasource {
+class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
   final HttpClient _httpClient;
 
-  AuthDatasourceImpl(this._httpClient);
+  AuthRemoteDatasourceImpl(this._httpClient);
 
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
@@ -2093,11 +2157,78 @@ class AuthDatasourceImpl implements AuthDatasource {
 
   @override
   Future<void> logout() async {
-    // Clear stored tokens
+    // Remote logout call if any
   }
 }
 ''';
     }
+  }
+
+  static String getAuthLocalDatasourceTemplate(CliConfig config) {
+    return '''
+import 'dart:convert';
+import '../../../core/storage/secure_storage_service.dart';
+import '../../../core/storage/storage_keys.dart';
+import '../model/auth_tokens.dart';
+import '../model/user_model.dart';
+
+abstract class AuthLocalDatasource {
+  Future<void> saveTokens(AuthTokens tokens);
+  Future<AuthTokens?> getTokens();
+  Future<void> clearTokens();
+  Future<void> saveUser(UserModel user);
+  Future<UserModel?> getUser();
+  Future<void> clearUser();
+}
+
+class AuthLocalDatasourceImpl implements AuthLocalDatasource {
+  final SecureStorageService _storage;
+
+  AuthLocalDatasourceImpl(this._storage);
+
+  @override
+  Future<void> saveTokens(AuthTokens tokens) async {
+    await _storage.write(StorageKeys.token, jsonEncode(tokens.toJson()));
+  }
+
+  @override
+  Future<AuthTokens?> getTokens() async {
+    final raw = await _storage.read(StorageKeys.token);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return AuthTokens.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> clearTokens() async {
+    await _storage.delete(StorageKeys.token);
+  }
+
+  @override
+  Future<void> saveUser(UserModel user) async {
+    await _storage.write(StorageKeys.userId, jsonEncode(user.toJson()));
+  }
+
+  @override
+  Future<UserModel?> getUser() async {
+    final raw = await _storage.read(StorageKeys.userId);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return UserModel.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> clearUser() async {
+    await _storage.delete(StorageKeys.userId);
+  }
+}
+''';
   }
 
   static String getAuthRepositoryTemplate(CliConfig config) {
@@ -2105,7 +2236,8 @@ class AuthDatasourceImpl implements AuthDatasource {
 import '../../../core/network/api_response.dart';
 import '../model/auth_tokens.dart';
 import '../model/user_model.dart';
-import '../datasource/auth_datasource.dart';
+import '../datasource/auth_remote_datasource.dart';
+import '../datasource/auth_local_datasource.dart';
 
 abstract class AuthRepository {
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password});
@@ -2118,43 +2250,62 @@ abstract class AuthRepository {
 }
 
 class AuthRepositoryImpl implements AuthRepository {
-  final AuthDatasource _datasource;
+  final AuthRemoteDatasource _remoteDatasource;
+  final AuthLocalDatasource _localDatasource;
 
-  AuthRepositoryImpl(this._datasource);
+  AuthRepositoryImpl(this._remoteDatasource, this._localDatasource);
 
   @override
   Future<ApiResponse<AuthTokens>> signInWithEmail({required String email, required String password}) async {
-    return await _datasource.signInWithEmail(email: email, password: password);
+    final response = await _remoteDatasource.signInWithEmail(email: email, password: password);
+    if (response.success && response.data != null) {
+      await _localDatasource.saveTokens(response.data!);
+    }
+    return response;
   }
 
   @override
   Future<ApiResponse<AuthTokens>> signUpWithEmail({required String name, required String email, required String password}) async {
-    return await _datasource.signUpWithEmail(name: name, email: email, password: password);
+    final response = await _remoteDatasource.signUpWithEmail(name: name, email: email, password: password);
+    if (response.success && response.data != null) {
+      await _localDatasource.saveTokens(response.data!);
+    }
+    return response;
   }
 
   @override
   Future<ApiResponse<String>> requestPasswordReset(String email) async {
-    return await _datasource.requestPasswordReset(email);
+    return await _remoteDatasource.requestPasswordReset(email);
   }
 
   @override
   Future<ApiResponse<String>> verifyOtp({required String email, required String otp}) async {
-    return await _datasource.verifyOtp(email: email, otp: otp);
+    return await _remoteDatasource.verifyOtp(email: email, otp: otp);
   }
 
   @override
   Future<ApiResponse<String>> resetPassword({required String email, required String otp, required String newPassword}) async {
-    return await _datasource.resetPassword(email: email, otp: otp, newPassword: newPassword);
+    return await _remoteDatasource.resetPassword(email: email, otp: otp, newPassword: newPassword);
   }
 
   @override
   Future<ApiResponse<UserModel>> getCurrentUser() async {
-    return await _datasource.getCurrentUser();
+    final cached = await _localDatasource.getUser();
+    if (cached != null) {
+      return ApiResponse.success(data: cached);
+    }
+    final response = await _remoteDatasource.getCurrentUser();
+    if (response.success && response.data != null) {
+      await _localDatasource.saveUser(response.data!);
+    }
+    return response;
   }
 
   @override
   Future<void> logout() async {
-    await _datasource.logout();
+    await _remoteDatasource.logout();
+    await _localDatasource.clearTokens();
+    await _localDatasource.clearUser();
   }
 }
 ''';

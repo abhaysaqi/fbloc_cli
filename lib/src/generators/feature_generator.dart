@@ -144,10 +144,14 @@ class FeatureGenerator {
       TemplateUtils.getAuthTokensModelTemplate(config),
     );
 
-    // Generate datasource
+    // Generate datasources
     await FileUtils.writeFile(
-      path.join(basePath, 'datasource', 'auth_datasource.dart'),
-      TemplateUtils.getAuthDatasourceTemplate(config),
+      path.join(basePath, 'datasource', 'auth_remote_datasource.dart'),
+      TemplateUtils.getAuthRemoteDatasourceTemplate(config),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'datasource', 'auth_local_datasource.dart'),
+      TemplateUtils.getAuthLocalDatasourceTemplate(config),
     );
 
     // Generate repository
@@ -264,8 +268,12 @@ class FeatureGenerator {
   static Future<void> _generateDatasourceFiles(
       String basePath, String featureName, CliConfig config) async {
     await FileUtils.writeFile(
-      path.join(basePath, 'datasource', '${featureName}_datasource.dart'),
-      TemplateUtils.getDatasourceTemplate(featureName, config),
+      path.join(basePath, 'datasource', '${featureName}_remote_datasource.dart'),
+      TemplateUtils.getRemoteDatasourceTemplate(featureName, config),
+    );
+    await FileUtils.writeFile(
+      path.join(basePath, 'datasource', '${featureName}_local_datasource.dart'),
+      TemplateUtils.getLocalDatasourceTemplate(featureName, config),
     );
   }
 
