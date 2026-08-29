@@ -10,6 +10,8 @@ class TemplateUtils {
       'flutter:\n    sdk: flutter',
       'flutter_bloc: ^9.1.1',
       'flutter_secure_storage: ^9.2.2',
+      'hive_ce: ^2.10.1',
+      'hive_ce_flutter: ^2.3.0',
       'get_it: ^8.0.3',
     ];
 
@@ -79,6 +81,7 @@ import 'app/features/home/datasource/home_remote_datasource.dart';
 import 'app/features/home/datasource/home_local_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
 $clientImport
+import 'app/core/storage/local_db_service.dart';
 import 'app/core/storage/secure_storage_service.dart';
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
@@ -99,11 +102,12 @@ class MyApp extends StatelessWidget {
       providers: [
         RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
         RepositoryProvider<SecureStorageService>(create: (_) => di.sl<SecureStorageService>()),
+        RepositoryProvider<LocalDbService>(create: (_) => di.sl<LocalDbService>()),
         RepositoryProvider<AuthRemoteDatasource>(create: (context) => AuthRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>(), context.read<LocalDbService>())),
         RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthRemoteDatasource>(), context.read<AuthLocalDatasource>())),
         RepositoryProvider<HomeRemoteDatasource>(create: (context) => HomeRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<LocalDbService>())),
         RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeRemoteDatasource>(), context.read<HomeLocalDatasource>())),
       ],
       child: MultiBlocProvider(
@@ -141,6 +145,7 @@ import 'app/features/home/datasource/home_remote_datasource.dart';
 import 'app/features/home/datasource/home_local_datasource.dart';
 import 'app/features/home/repository/home_repository.dart';
 $clientImport
+import 'app/core/storage/local_db_service.dart';
 import 'app/core/storage/secure_storage_service.dart';
 import 'app/core/di/injection_container.dart' as di;
 $authBlocEventImport
@@ -161,11 +166,12 @@ class MyApp extends StatelessWidget {
       providers: [
         RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
         RepositoryProvider<SecureStorageService>(create: (_) => di.sl<SecureStorageService>()),
+        RepositoryProvider<LocalDbService>(create: (_) => di.sl<LocalDbService>()),
         RepositoryProvider<AuthRemoteDatasource>(create: (context) => AuthRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>(), context.read<LocalDbService>())),
         RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthRemoteDatasource>(), context.read<AuthLocalDatasource>())),
         RepositoryProvider<HomeRemoteDatasource>(create: (context) => HomeRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<SecureStorageService>())),
+        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<LocalDbService>())),
         RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeRemoteDatasource>(), context.read<HomeLocalDatasource>())),
       ],
       child: MultiBlocProvider(
@@ -1270,43 +1276,61 @@ class ${pascalName}RemoteDatasourceImpl implements ${pascalName}RemoteDatasource
     final pascalName = FileUtils.toPascalCase(featureName);
 
     return '''
-import 'dart:convert';
-import '../../../core/storage/secure_storage_service.dart';
-import '../../../core/storage/storage_keys.dart';
+import '../../../core/errors/exceptions.dart';
+import '../../../core/storage/local_db_service.dart';
+import '../../../core/utils/logger.dart';
 import '../model/${featureName}_model.dart';
 
 abstract class ${pascalName}LocalDatasource {
-  Future<void> cache${pascalName}s(List<${pascalName}Model> items);
   Future<List<${pascalName}Model>> getCached${pascalName}s();
+  Future<void> cache${pascalName}s(List<${pascalName}Model> items);
   Future<void> clearCache();
 }
 
 class ${pascalName}LocalDatasourceImpl implements ${pascalName}LocalDatasource {
-  final SecureStorageService _storage;
+  final LocalDbService _localDbService;
+  static const String _boxName = '${featureName}_cache';
+  static const String _key = '${featureName}_list';
 
-  ${pascalName}LocalDatasourceImpl(this._storage);
+  const ${pascalName}LocalDatasourceImpl(this._localDbService);
+
+  @override
+  Future<List<${pascalName}Model>> getCached${pascalName}s() => _getFromCache();
 
   @override
   Future<void> cache${pascalName}s(List<${pascalName}Model> items) async {
-    final jsonString = jsonEncode(items.map((e) => e.toJson()).toList());
-    await _storage.write(StorageKeys.token, jsonString);
-  }
-
-  @override
-  Future<List<${pascalName}Model>> getCached${pascalName}s() async {
-    final raw = await _storage.read(StorageKeys.token);
-    if (raw == null || raw.isEmpty) return [];
     try {
-      final list = jsonDecode(raw) as List;
-      return list.map((item) => ${pascalName}Model.fromJson(item)).toList();
-    } catch (_) {
-      return [];
+      final data = items.map((e) => e.toJson()).toList();
+      await _localDbService.put(_boxName, _key, data);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to cache $featureName items', e, stackTrace);
+      throw const CacheException(message: 'Failed to cache $featureName items');
     }
   }
 
   @override
   Future<void> clearCache() async {
-    await _storage.delete(StorageKeys.token);
+    try {
+      await _localDbService.delete(_boxName, _key);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to clear $featureName cache', e, stackTrace);
+      throw const CacheException(message: 'Failed to clear cache');
+    }
+  }
+
+  Future<List<${pascalName}Model>> _getFromCache() async {
+    try {
+      final response = await _localDbService.getValue<List<dynamic>>(_boxName, _key);
+      if (response != null) {
+        return response
+            .map((item) => ${pascalName}Model.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+      }
+      return [];
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get $featureName from cache', e, stackTrace);
+      throw const CacheException(message: 'Failed to load from cache');
+    }
   }
 }
 ''';
@@ -2166,9 +2190,11 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
 
   static String getAuthLocalDatasourceTemplate(CliConfig config) {
     return '''
-import 'dart:convert';
+import '../../../core/errors/exceptions.dart';
+import '../../../core/storage/local_db_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../../core/storage/storage_keys.dart';
+import '../../../core/utils/logger.dart';
 import '../model/auth_tokens.dart';
 import '../model/user_model.dart';
 
@@ -2179,53 +2205,101 @@ abstract class AuthLocalDatasource {
   Future<void> saveUser(UserModel user);
   Future<UserModel?> getUser();
   Future<void> clearUser();
+  Future<UserModel?> checkSignInStatus();
 }
 
 class AuthLocalDatasourceImpl implements AuthLocalDatasource {
-  final SecureStorageService _storage;
+  final SecureStorageService _secureStorage;
+  final LocalDbService _localDbService;
+  static const String _authBox = 'auth_cache';
+  static const String _userKey = 'cached_user';
 
-  AuthLocalDatasourceImpl(this._storage);
+  const AuthLocalDatasourceImpl(
+    this._secureStorage,
+    this._localDbService,
+  );
 
   @override
   Future<void> saveTokens(AuthTokens tokens) async {
-    await _storage.write(StorageKeys.token, jsonEncode(tokens.toJson()));
+    try {
+      await _secureStorage.write(StorageKeys.token, tokens.accessToken);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to save tokens', e, stackTrace);
+      throw const CacheException(message: 'Failed to save tokens');
+    }
   }
 
   @override
   Future<AuthTokens?> getTokens() async {
-    final raw = await _storage.read(StorageKeys.token);
-    if (raw == null || raw.isEmpty) return null;
     try {
-      return AuthTokens.fromJson(jsonDecode(raw));
-    } catch (_) {
-      return null;
+      final token = await _secureStorage.read(StorageKeys.token);
+      if (token == null || token.isEmpty) return null;
+      return AuthTokens(accessToken: token, refreshToken: '');
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get tokens', e, stackTrace);
+      throw const CacheException(message: 'Failed to read tokens');
     }
   }
 
   @override
   Future<void> clearTokens() async {
-    await _storage.delete(StorageKeys.token);
+    try {
+      await _secureStorage.delete(StorageKeys.token);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to clear tokens', e, stackTrace);
+      throw const CacheException(message: 'Failed to clear tokens');
+    }
   }
 
   @override
   Future<void> saveUser(UserModel user) async {
-    await _storage.write(StorageKeys.userId, jsonEncode(user.toJson()));
+    try {
+      await _secureStorage.write(StorageKeys.userId, user.id);
+      await _localDbService.put(_authBox, _userKey, user.toJson());
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to save user', e, stackTrace);
+      throw const CacheException(message: 'Failed to save user');
+    }
   }
 
   @override
   Future<UserModel?> getUser() async {
-    final raw = await _storage.read(StorageKeys.userId);
-    if (raw == null || raw.isEmpty) return null;
     try {
-      return UserModel.fromJson(jsonDecode(raw));
-    } catch (_) {
+      final data = await _localDbService.getValue<Map>(_authBox, _userKey);
+      if (data != null) {
+        return UserModel.fromJson(Map<String, dynamic>.from(data));
+      }
       return null;
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to get user', e, stackTrace);
+      throw const CacheException(message: 'Failed to read user');
     }
   }
 
   @override
   Future<void> clearUser() async {
-    await _storage.delete(StorageKeys.userId);
+    try {
+      await _secureStorage.delete(StorageKeys.userId);
+      await _localDbService.delete(_authBox, _userKey);
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to clear user', e, stackTrace);
+      throw const CacheException(message: 'Failed to clear user');
+    }
+  }
+
+  @override
+  Future<UserModel?> checkSignInStatus() async {
+    try {
+      final token = await _secureStorage.read(StorageKeys.token);
+      final user = await getUser();
+      if (token != null && token.isNotEmpty && user != null) {
+        return user;
+      }
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.error('Failed to check sign in status', e, stackTrace);
+      throw const CacheException(message: 'Failed to check sign in status');
+    }
   }
 }
 ''';
@@ -4237,6 +4311,196 @@ class SocialButton extends StatelessWidget {
 ''';
   }
 
+  static String getLocalDbServiceTemplate() {
+    return '''
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
+
+/// Generic local storage service built on top of Hive CE.
+///
+/// Responsibilities:
+/// - Initialize Hive
+/// - Open and manage boxes
+/// - Store, read, update and delete data
+/// - Provide generic access to Hive boxes
+///
+/// Feature repositories and datasources should use this service instead of
+/// accessing Hive directly.
+class LocalDbService {
+  LocalDbService();
+
+  /// Initialize Hive.
+  ///
+  /// Call this once before using any Hive functionality.
+  Future<void> init() async {
+    await Hive.initFlutter();
+  }
+
+  /// Register a Hive adapter.
+  ///
+  /// Example:
+  /// ```dart
+  /// registerAdapter(UserModelAdapter());
+  /// ```
+  void registerAdapter<T>(TypeAdapter<T> adapter) {
+    if (!Hive.isAdapterRegistered(adapter.typeId)) {
+      Hive.registerAdapter(adapter);
+    }
+  }
+
+  /// Open a Hive box.
+  ///
+  /// If the box is already open, the existing instance is returned.
+  Future<Box<T>> openBox<T>(String boxName) async {
+    if (Hive.isBoxOpen(boxName)) {
+      return Hive.box<T>(boxName);
+    }
+
+    return Hive.openBox<T>(boxName);
+  }
+
+  /// Get an already opened box.
+  ///
+  /// Throws [StateError] if the box has not been opened.
+  Box<T> getBox<T>(String boxName) {
+    if (!Hive.isBoxOpen(boxName)) {
+      throw StateError(
+        'Hive box "\$boxName" is not open. '
+        'Call openBox() before accessing it.',
+      );
+    }
+
+    return Hive.box<T>(boxName);
+  }
+
+  /// Store or update a value.
+  Future<void> put<T>(
+    String boxName,
+    String key,
+    T value,
+  ) async {
+    final box = await openBox<T>(boxName);
+    await box.put(key, value);
+  }
+
+  /// Store multiple values at once.
+  Future<void> putAll<T>(
+    String boxName,
+    Map<String, T> values,
+  ) async {
+    final box = await openBox<T>(boxName);
+    await box.putAll(values);
+  }
+
+  /// Get a value by key.
+  T? get<T>(
+    String boxName,
+    String key, {
+    T? defaultValue,
+  }) {
+    final box = getBox<T>(boxName);
+
+    return box.get(
+      key,
+      defaultValue: defaultValue,
+    );
+  }
+
+  /// Get a value asynchronously.
+  ///
+  /// Useful when the box may not already be open.
+  Future<T?> getValue<T>(
+    String boxName,
+    String key, {
+    T? defaultValue,
+  }) async {
+    final box = await openBox<T>(boxName);
+
+    return box.get(
+      key,
+      defaultValue: defaultValue,
+    );
+  }
+
+  /// Check whether a key exists.
+  bool containsKey<T>(
+    String boxName,
+    String key,
+  ) {
+    final box = getBox<T>(boxName);
+    return box.containsKey(key);
+  }
+
+  /// Delete a value by key.
+  Future<void> delete<T>(
+    String boxName,
+    String key,
+  ) async {
+    final box = await openBox<T>(boxName);
+    await box.delete(key);
+  }
+
+  /// Delete multiple values by keys.
+  Future<void> deleteAll<T>(
+    String boxName,
+    Iterable<String> keys,
+  ) async {
+    final box = await openBox<T>(boxName);
+    await box.deleteAll(keys);
+  }
+
+  /// Get all values from a box.
+  List<T> getAll<T>(String boxName) {
+    final box = getBox<T>(boxName);
+    return box.values.toList();
+  }
+
+  /// Get all keys from a box.
+  List<dynamic> getAllKeys<T>(String boxName) {
+    final box = getBox<T>(boxName);
+    return box.keys.toList();
+  }
+
+  /// Get the number of stored values.
+  int length<T>(String boxName) {
+    final box = getBox<T>(boxName);
+    return box.length;
+  }
+
+  /// Clear all values from a box.
+  Future<void> clear<T>(String boxName) async {
+    final box = await openBox<T>(boxName);
+    await box.clear();
+  }
+
+  /// Check whether a box is open.
+  bool isBoxOpen(String boxName) {
+    return Hive.isBoxOpen(boxName);
+  }
+
+  /// Close a specific box.
+  Future<void> closeBox<T>(String boxName) async {
+    if (Hive.isBoxOpen(boxName)) {
+      await Hive.box<T>(boxName).close();
+    }
+  }
+
+  /// Close all open Hive boxes.
+  Future<void> closeAllBoxes() async {
+    await Hive.close();
+  }
+
+  /// Delete a box and its data from disk.
+  Future<void> deleteBox(String boxName) async {
+    if (Hive.isBoxOpen(boxName)) {
+      await Hive.box(boxName).close();
+    }
+
+    await Hive.deleteBoxFromDisk(boxName);
+  }
+}
+''';
+  }
+
   static String getInjectionContainerTemplate(CliConfig config) {
     final isDio = config.networkPackage == 'dio';
     if (isDio) {
@@ -4247,10 +4511,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/client/dio_client.dart';
 import '../network/connection_checker.dart';
 import '../storage/secure_storage_service.dart';
+import '../storage/local_db_service.dart';
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  // Local DB / Hive
+  final localDbService = LocalDbService();
+  await localDbService.init();
+  sl.registerLazySingleton<LocalDbService>(() => localDbService);
+
   // External
   sl.registerLazySingleton(() => Dio());
   sl.registerLazySingleton(() => const FlutterSecureStorage());
@@ -4269,10 +4539,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/client/http_client.dart';
 import '../network/connection_checker.dart';
 import '../storage/secure_storage_service.dart';
+import '../storage/local_db_service.dart';
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
+  // Local DB / Hive
+  final localDbService = LocalDbService();
+  await localDbService.init();
+  sl.registerLazySingleton<LocalDbService>(() => localDbService);
+
   // External
   sl.registerLazySingleton(() => http.Client());
   sl.registerLazySingleton(() => const FlutterSecureStorage());

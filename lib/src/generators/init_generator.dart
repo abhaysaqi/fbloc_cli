@@ -179,6 +179,10 @@ class InitGenerator {
 
     // storage dir
     await _createFileIfMissing(
+      path.join(appBase, 'core/storage/local_db_service.dart'),
+      TemplateUtils.getLocalDbServiceTemplate(),
+    );
+    await _createFileIfMissing(
       path.join(appBase, 'core/storage/secure_storage_service.dart'),
       TemplateUtils.getSecureStorageServiceTemplate(),
     );

@@ -243,6 +243,10 @@ class ProjectGenerator {
 
     // storage dir
     await FileUtils.writeFile(
+      path.join(basePath, 'core/storage/local_db_service.dart'),
+      TemplateUtils.getLocalDbServiceTemplate(),
+    );
+    await FileUtils.writeFile(
       path.join(basePath, 'core/storage/secure_storage_service.dart'),
       TemplateUtils.getSecureStorageServiceTemplate(),
     );
