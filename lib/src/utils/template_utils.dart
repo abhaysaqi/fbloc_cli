@@ -53,18 +53,9 @@ flutter:
     final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
     final stateClassSuffix =
         config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit';
-    final authBlocEventImport = config.stateManagement == 'bloc'
-        ? "import 'app/features/auth/$stateFolder/auth_event.dart';"
-        : '';
     final homeBlocEventImport = config.stateManagement == 'bloc'
         ? "import 'app/features/home/$stateFolder/home_event.dart';"
         : '';
-
-    final isDio = config.networkPackage == 'dio';
-    final clientClass = isDio ? 'DioClient' : 'HttpClient';
-    final clientImport = isDio
-        ? "import 'app/core/network/client/dio_client.dart';"
-        : "import 'app/core/network/client/http_client.dart';";
 
     if (config.navigation == 'go_router') {
       return '''
@@ -73,18 +64,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
-import 'app/features/auth/datasource/auth_remote_datasource.dart';
-import 'app/features/auth/datasource/auth_local_datasource.dart';
-import 'app/features/auth/repository/auth_repository.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
-import 'app/features/home/datasource/home_remote_datasource.dart';
-import 'app/features/home/datasource/home_local_datasource.dart';
-import 'app/features/home/repository/home_repository.dart';
-$clientImport
-import 'app/core/storage/local_db_service.dart';
-import 'app/core/storage/secure_storage_service.dart';
 import 'app/core/di/injection_container.dart' as di;
-$authBlocEventImport
 $homeBlocEventImport
 
 void main() async {
@@ -98,32 +79,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    return MultiBlocProvider(
       providers: [
-        RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
-        RepositoryProvider<SecureStorageService>(create: (_) => di.sl<SecureStorageService>()),
-        RepositoryProvider<LocalDbService>(create: (_) => di.sl<LocalDbService>()),
-        RepositoryProvider<AuthRemoteDatasource>(create: (context) => AuthRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>(), context.read<LocalDbService>())),
-        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthRemoteDatasource>(), context.read<AuthLocalDatasource>())),
-        RepositoryProvider<HomeRemoteDatasource>(create: (context) => HomeRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<LocalDbService>())),
-        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeRemoteDatasource>(), context.read<HomeLocalDatasource>())),
+        BlocProvider(create: (_) => di.sl<Auth$stateClassSuffix>()),
+        BlocProvider(create: (_) => di.sl<Home$stateClassSuffix>()${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (context) => Auth$stateClassSuffix(
-            context.read<AuthRepository>(),
-          )),
-          BlocProvider(create: (context) => Home$stateClassSuffix(
-            context.read<HomeRepository>(),
-          )${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
-        ],
-        child: MaterialApp.router(
-          title: 'Flutter Demo',
-          theme: AppTheme.lightTheme,
-          routerConfig: router,
-        ),
+      child: MaterialApp.router(
+        title: 'Flutter Demo',
+        theme: AppTheme.lightTheme,
+        routerConfig: router,
       ),
     );
   }
@@ -137,18 +101,8 @@ import 'app/core/theme/app_theme.dart';
 import 'app/routes/app_routes.dart';
 import 'app/routes/route_names.dart';
 import 'app/features/auth/$stateFolder/auth_${config.stateManagement}.dart';
-import 'app/features/auth/datasource/auth_remote_datasource.dart';
-import 'app/features/auth/datasource/auth_local_datasource.dart';
-import 'app/features/auth/repository/auth_repository.dart';
 import 'app/features/home/$stateFolder/home_${config.stateManagement}.dart';
-import 'app/features/home/datasource/home_remote_datasource.dart';
-import 'app/features/home/datasource/home_local_datasource.dart';
-import 'app/features/home/repository/home_repository.dart';
-$clientImport
-import 'app/core/storage/local_db_service.dart';
-import 'app/core/storage/secure_storage_service.dart';
 import 'app/core/di/injection_container.dart' as di;
-$authBlocEventImport
 $homeBlocEventImport
 
 void main() async {
@@ -162,33 +116,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    return MultiBlocProvider(
       providers: [
-        RepositoryProvider<$clientClass>(create: (_) => di.sl<$clientClass>()),
-        RepositoryProvider<SecureStorageService>(create: (_) => di.sl<SecureStorageService>()),
-        RepositoryProvider<LocalDbService>(create: (_) => di.sl<LocalDbService>()),
-        RepositoryProvider<AuthRemoteDatasource>(create: (context) => AuthRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<AuthLocalDatasource>(create: (context) => AuthLocalDatasourceImpl(context.read<SecureStorageService>(), context.read<LocalDbService>())),
-        RepositoryProvider<AuthRepository>(create: (context) => AuthRepositoryImpl(context.read<AuthRemoteDatasource>(), context.read<AuthLocalDatasource>())),
-        RepositoryProvider<HomeRemoteDatasource>(create: (context) => HomeRemoteDatasourceImpl(context.read<$clientClass>())),
-        RepositoryProvider<HomeLocalDatasource>(create: (context) => HomeLocalDatasourceImpl(context.read<LocalDbService>())),
-        RepositoryProvider<HomeRepository>(create: (context) => HomeRepositoryImpl(context.read<HomeRemoteDatasource>(), context.read<HomeLocalDatasource>())),
+        BlocProvider(create: (_) => di.sl<Auth$stateClassSuffix>()),
+        BlocProvider(create: (_) => di.sl<Home$stateClassSuffix>()${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(create: (context) => Auth$stateClassSuffix(
-            context.read<AuthRepository>(),
-          )),
-          BlocProvider(create: (context) => Home$stateClassSuffix(
-            context.read<HomeRepository>(),
-          )${config.stateManagement == 'bloc' ? '..add(HomeStarted())' : '..loadData()'}),
-        ],
-        child: MaterialApp(
-          title: 'Flutter Demo',
-          theme: AppTheme.lightTheme,
-          onGenerateRoute: AppRoutes.generateRoute,
-          initialRoute: RouteNames.signIn,
-        ),
+      child: MaterialApp(
+        title: 'Flutter Demo',
+        theme: AppTheme.lightTheme,
+        onGenerateRoute: AppRoutes.generateRoute,
+        initialRoute: RouteNames.signIn,
       ),
     );
   }
@@ -929,8 +866,43 @@ class ${pascalName}LoadMore extends ${pascalName}Event {}
         ? '''
   
   @override
-  List<Object> get props => [];'''
+  List<Object?> get props => [];'''
         : '';
+
+    final loadedEquality = config.useEquatable
+        ? '''
+
+  @override
+  List<Object?> get props => [items, hasMore];'''
+        : '''
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ${pascalName}Loaded &&
+          runtimeType == other.runtimeType &&
+          hasMore == other.hasMore &&
+          Object.hashAll(items) == Object.hashAll(other.items);
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(items), hasMore);''';
+
+    final errorEquality = config.useEquatable
+        ? '''
+
+  @override
+  List<Object?> get props => [message];'''
+        : '''
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ${pascalName}Error &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => message.hashCode;''';
 
     return '''
 ${config.useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
@@ -940,21 +912,25 @@ abstract class ${pascalName}State$equatableExtends {
   const ${pascalName}State();$propsOverride
 }
 
-class ${pascalName}Initial extends ${pascalName}State {}
+class ${pascalName}Initial extends ${pascalName}State {
+  const ${pascalName}Initial();
+}
 
-class ${pascalName}Loading extends ${pascalName}State {}
+class ${pascalName}Loading extends ${pascalName}State {
+  const ${pascalName}Loading();
+}
 
 class ${pascalName}Loaded extends ${pascalName}State {
   final List<${pascalName}Model> items;
   final bool hasMore;
 
-  const ${pascalName}Loaded(this.items, {this.hasMore = true});
+  const ${pascalName}Loaded(this.items, {this.hasMore = true});$loadedEquality
 }
 
 class ${pascalName}Error extends ${pascalName}State {
   final String message;
   
-  const ${pascalName}Error(this.message);
+  const ${pascalName}Error(this.message);$errorEquality
 }
 ''';
   }
@@ -1023,8 +999,43 @@ class ${pascalName}Cubit extends Cubit<${pascalName}State> {
         ? '''
   
   @override
-  List<Object> get props => [];'''
+  List<Object?> get props => [];'''
         : '';
+
+    final loadedEquality = config.useEquatable
+        ? '''
+
+  @override
+  List<Object?> get props => [items, hasMore];'''
+        : '''
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ${pascalName}Loaded &&
+          runtimeType == other.runtimeType &&
+          hasMore == other.hasMore &&
+          Object.hashAll(items) == Object.hashAll(other.items);
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(items), hasMore);''';
+
+    final errorEquality = config.useEquatable
+        ? '''
+
+  @override
+  List<Object?> get props => [message];'''
+        : '''
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ${pascalName}Error &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => message.hashCode;''';
 
     return '''
 ${config.useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
@@ -1034,21 +1045,25 @@ abstract class ${pascalName}State$equatableExtends {
   const ${pascalName}State();$propsOverride
 }
 
-class ${pascalName}Initial extends ${pascalName}State {}
+class ${pascalName}Initial extends ${pascalName}State {
+  const ${pascalName}Initial();
+}
 
-class ${pascalName}Loading extends ${pascalName}State {}
+class ${pascalName}Loading extends ${pascalName}State {
+  const ${pascalName}Loading();
+}
 
 class ${pascalName}Loaded extends ${pascalName}State {
   final List<${pascalName}Model> items;
   final bool hasMore;
 
-  const ${pascalName}Loaded(this.items, {this.hasMore = true});
+  const ${pascalName}Loaded(this.items, {this.hasMore = true});$loadedEquality
 }
 
 class ${pascalName}Error extends ${pascalName}State {
   final String message;
   
-  const ${pascalName}Error(this.message);
+  const ${pascalName}Error(this.message);$errorEquality
 }
 ''';
   }
@@ -1396,12 +1411,25 @@ class ${pascalName}RepositoryImpl implements ${pascalName}Repository {
     final equatableExtends = config.useEquatable ? ' extends Equatable' : '';
     final equatableImport =
         config.useEquatable ? "import 'package:equatable/equatable.dart';" : '';
-    final propsOverride = config.useEquatable
+    final equalityOverride = config.useEquatable
         ? '''
 
   @override
-  List<Object> get props => [id, name, createdAt, updatedAt];'''
-        : '';
+  List<Object?> get props => [id, name, createdAt, updatedAt];'''
+        : '''
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ${pascalName}Model &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          createdAt == other.createdAt &&
+          updatedAt == other.updatedAt;
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, updatedAt);''';
 
     return '''
 $equatableImport
@@ -1467,7 +1495,7 @@ class ${pascalName}Model$equatableExtends {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
-  }$propsOverride
+  }$equalityOverride
 }
 ''';
   }
@@ -1826,6 +1854,22 @@ class AppDrawer extends StatelessWidget {
 
   static String getUserModelTemplate(CliConfig config) {
     final useEquatable = config.useEquatable;
+    final equalityOverride = useEquatable
+        ? '  @override\n  List<Object?> get props => [id, name, email, photoUrl, createdAt];'
+        : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserModel &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          email == other.email &&
+          photoUrl == other.photoUrl &&
+          createdAt == other.createdAt;
+
+  @override
+  int get hashCode => Object.hash(id, name, email, photoUrl, createdAt);''';
+
     return '''
 ${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
 
@@ -1872,13 +1916,27 @@ class UserModel${useEquatable ? ' extends Equatable' : ''} {
     );
   }
 
-${useEquatable ? '  @override\n  List<Object?> get props => [id, name, email, photoUrl, createdAt];' : ''}
+$equalityOverride
 }
 ''';
   }
 
   static String getAuthTokensModelTemplate(CliConfig config) {
     final useEquatable = config.useEquatable;
+    final equalityOverride = useEquatable
+        ? '  @override\n  List<Object?> get props => [accessToken, refreshToken, expiresAt];'
+        : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthTokens &&
+          runtimeType == other.runtimeType &&
+          accessToken == other.accessToken &&
+          refreshToken == other.refreshToken &&
+          expiresAt == other.expiresAt;
+
+  @override
+  int get hashCode => Object.hash(accessToken, refreshToken, expiresAt);''';
+
     return '''
 ${useEquatable ? "import 'package:equatable/equatable.dart';" : ''}
 
@@ -1907,7 +1965,7 @@ class AuthTokens${useEquatable ? ' extends Equatable' : ''} {
     'expiresAt': expiresAt?.toIso8601String(),
   };
 
-${useEquatable ? '  @override\n  List<Object?> get props => [accessToken, refreshToken, expiresAt];' : ''}
+$equalityOverride
 }
 ''';
   }
@@ -2401,7 +2459,16 @@ class SignInEmailRequested extends AuthEvent {
   final String email;
   final String password;
   const SignInEmailRequested({required this.email, required this.password});
-${useEquatable ? '  @override\n  List<Object?> get props => [email, password];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [email, password];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SignInEmailRequested &&
+          runtimeType == other.runtimeType &&
+          email == other.email &&
+          password == other.password;
+
+  @override
+  int get hashCode => Object.hash(email, password);'''}
 }
 
 class SignUpEmailRequested extends AuthEvent {
@@ -2409,20 +2476,47 @@ class SignUpEmailRequested extends AuthEvent {
   final String email;
   final String password;
   const SignUpEmailRequested({required this.name, required this.email, required this.password});
-${useEquatable ? '  @override\n  List<Object?> get props => [name, email, password];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [name, email, password];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SignUpEmailRequested &&
+          runtimeType == other.runtimeType &&
+          name == other.name &&
+          email == other.email &&
+          password == other.password;
+
+  @override
+  int get hashCode => Object.hash(name, email, password);'''}
 }
 
 class ForgotPasswordRequested extends AuthEvent {
   final String email;
   const ForgotPasswordRequested(this.email);
-${useEquatable ? '  @override\n  List<Object?> get props => [email];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [email];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ForgotPasswordRequested &&
+          runtimeType == other.runtimeType &&
+          email == other.email;
+
+  @override
+  int get hashCode => email.hashCode;'''}
 }
 
 class OtpVerifyRequested extends AuthEvent {
   final String email;
   final String otp;
   const OtpVerifyRequested({required this.email, required this.otp});
-${useEquatable ? '  @override\n  List<Object?> get props => [email, otp];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [email, otp];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpVerifyRequested &&
+          runtimeType == other.runtimeType &&
+          email == other.email &&
+          otp == other.otp;
+
+  @override
+  int get hashCode => Object.hash(email, otp);'''}
 }
 
 class ResetPasswordRequested extends AuthEvent {
@@ -2430,7 +2524,17 @@ class ResetPasswordRequested extends AuthEvent {
   final String otp;
   final String newPassword;
   const ResetPasswordRequested({required this.email, required this.otp, required this.newPassword});
-${useEquatable ? '  @override\n  List<Object?> get props => [email, otp, newPassword];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [email, otp, newPassword];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ResetPasswordRequested &&
+          runtimeType == other.runtimeType &&
+          email == other.email &&
+          otp == other.otp &&
+          newPassword == other.newPassword;
+
+  @override
+  int get hashCode => Object.hash(email, otp, newPassword);'''}
 }
 
 class LogoutRequested extends AuthEvent {
@@ -2465,7 +2569,15 @@ class AuthLoading extends AuthState {
 class AuthAuthenticated extends AuthState {
   final UserModel? user;
   const AuthAuthenticated({this.user});
-${useEquatable ? '  @override\n  List<Object?> get props => [user];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [user];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthAuthenticated &&
+          runtimeType == other.runtimeType &&
+          user == other.user;
+
+  @override
+  int get hashCode => user.hashCode;'''}
 }
 
 class AuthUnauthenticated extends AuthState {
@@ -2475,25 +2587,57 @@ class AuthUnauthenticated extends AuthState {
 class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);
-${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthError &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => message.hashCode;'''}
 }
 
 class PasswordResetEmailSent extends AuthState {
   final String message;
   const PasswordResetEmailSent(this.message);
-${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PasswordResetEmailSent &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => message.hashCode;'''}
 }
 
 class OtpVerified extends AuthState {
   final String message;
   const OtpVerified(this.message);
-${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is OtpVerified &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => message.hashCode;'''}
 }
 
 class PasswordResetSuccess extends AuthState {
   final String message;
   const PasswordResetSuccess(this.message);
-${useEquatable ? '  @override\n  List<Object?> get props => [message];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [message];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PasswordResetSuccess &&
+          runtimeType == other.runtimeType &&
+          message == other.message;
+
+  @override
+  int get hashCode => message.hashCode;'''}
 }
 ''';
   }
@@ -2603,7 +2747,19 @@ class AuthCubitState${useEquatable ? ' extends Equatable' : ''} {
     );
   }
 
-${useEquatable ? '  @override\n  List<Object?> get props => [isLoading, isAuthenticated, user, error, message];' : ''}
+${useEquatable ? '  @override\n  List<Object?> get props => [isLoading, isAuthenticated, user, error, message];' : '''  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthCubitState &&
+          runtimeType == other.runtimeType &&
+          isLoading == other.isLoading &&
+          isAuthenticated == other.isAuthenticated &&
+          user == other.user &&
+          error == other.error &&
+          message == other.message;
+
+  @override
+  int get hashCode => Object.hash(isLoading, isAuthenticated, user, error, message);'''}
 }
 ''';
   }
@@ -4502,6 +4658,9 @@ class LocalDbService {
   }
 
   static String getInjectionContainerTemplate(CliConfig config) {
+    final stateFolder = config.stateManagement == 'bloc' ? 'bloc' : 'cubit';
+    final stateClassSuffix =
+        config.stateManagement == 'bloc' ? 'Bloc' : 'Cubit';
     final isDio = config.networkPackage == 'dio';
     if (isDio) {
       return '''
@@ -4512,6 +4671,14 @@ import '../network/client/dio_client.dart';
 import '../network/connection_checker.dart';
 import '../storage/secure_storage_service.dart';
 import '../storage/local_db_service.dart';
+import '../../features/auth/datasource/auth_remote_datasource.dart';
+import '../../features/auth/datasource/auth_local_datasource.dart';
+import '../../features/auth/repository/auth_repository.dart';
+import '../../features/auth/$stateFolder/auth_${config.stateManagement}.dart';
+import '../../features/home/datasource/home_remote_datasource.dart';
+import '../../features/home/datasource/home_local_datasource.dart';
+import '../../features/home/repository/home_repository.dart';
+import '../../features/home/$stateFolder/home_${config.stateManagement}.dart';
 
 final sl = GetIt.instance;
 
@@ -4529,6 +4696,30 @@ Future<void> init() async {
   sl.registerLazySingleton<ConnectionChecker>(() => ConnectionCheckerImpl());
   sl.registerLazySingleton(() => DioClient(dio: sl()));
   sl.registerLazySingleton(() => SecureStorageService(storage: sl()));
+
+  // Auth Feature
+  sl.registerLazySingleton<AuthRemoteDatasource>(
+    () => AuthRemoteDatasourceImpl(sl()),
+  );
+  sl.registerLazySingleton<AuthLocalDatasource>(
+    () => AuthLocalDatasourceImpl(sl(), sl()),
+  );
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(sl(), sl()),
+  );
+  sl.registerFactory(() => Auth$stateClassSuffix(sl()));
+
+  // Home Feature
+  sl.registerLazySingleton<HomeRemoteDatasource>(
+    () => HomeRemoteDatasourceImpl(sl()),
+  );
+  sl.registerLazySingleton<HomeLocalDatasource>(
+    () => HomeLocalDatasourceImpl(sl()),
+  );
+  sl.registerLazySingleton<HomeRepository>(
+    () => HomeRepositoryImpl(sl(), sl()),
+  );
+  sl.registerFactory(() => Home$stateClassSuffix(sl()));
 }
 ''';
     } else {
@@ -4540,6 +4731,14 @@ import '../network/client/http_client.dart';
 import '../network/connection_checker.dart';
 import '../storage/secure_storage_service.dart';
 import '../storage/local_db_service.dart';
+import '../../features/auth/datasource/auth_remote_datasource.dart';
+import '../../features/auth/datasource/auth_local_datasource.dart';
+import '../../features/auth/repository/auth_repository.dart';
+import '../../features/auth/$stateFolder/auth_${config.stateManagement}.dart';
+import '../../features/home/datasource/home_remote_datasource.dart';
+import '../../features/home/datasource/home_local_datasource.dart';
+import '../../features/home/repository/home_repository.dart';
+import '../../features/home/$stateFolder/home_${config.stateManagement}.dart';
 
 final sl = GetIt.instance;
 
@@ -4557,6 +4756,30 @@ Future<void> init() async {
   sl.registerLazySingleton<ConnectionChecker>(() => ConnectionCheckerImpl());
   sl.registerLazySingleton(() => HttpClient(client: sl()));
   sl.registerLazySingleton(() => SecureStorageService(storage: sl()));
+
+  // Auth Feature
+  sl.registerLazySingleton<AuthRemoteDatasource>(
+    () => AuthRemoteDatasourceImpl(sl()),
+  );
+  sl.registerLazySingleton<AuthLocalDatasource>(
+    () => AuthLocalDatasourceImpl(sl(), sl()),
+  );
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(sl(), sl()),
+  );
+  sl.registerFactory(() => Auth$stateClassSuffix(sl()));
+
+  // Home Feature
+  sl.registerLazySingleton<HomeRemoteDatasource>(
+    () => HomeRemoteDatasourceImpl(sl()),
+  );
+  sl.registerLazySingleton<HomeLocalDatasource>(
+    () => HomeLocalDatasourceImpl(sl()),
+  );
+  sl.registerLazySingleton<HomeRepository>(
+    () => HomeRepositoryImpl(sl(), sl()),
+  );
+  sl.registerFactory(() => Home$stateClassSuffix(sl()));
 }
 ''';
     }
