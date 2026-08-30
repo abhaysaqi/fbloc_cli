@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import '../models/cli_config.dart';
 import '../utils/config_utils.dart';
 import '../utils/file_utils.dart';
+import '../utils/loading_utils.dart';
 import '../utils/template_utils.dart';
 import 'feature_generator.dart';
 
@@ -47,6 +48,8 @@ class InitGenerator {
       print('✅ Existing .cli_config.json found. Using saved configuration.');
     }
 
+    final activeConfig = config;
+
     // 2) Create app structure under lib/app
     final libDir = Directory(path.join(root, 'lib'));
     if (!await libDir.exists()) {
@@ -59,220 +62,226 @@ class InitGenerator {
 
     final appBase = path.join(libDir.path, 'app');
 
-    // Create directories
-    final dirs = [
-      'config',
-      'core/constants',
-      'core/errors',
-      'core/network',
-      'core/theme',
-      'core/extensions',
-      'core/storage',
-      'core/utils',
-      'core/widgets',
-      'core/di',
-      'routes',
-      'features',
-    ];
+    // 3) Create core structure and files
+    await LoadingProgress.run(
+      message: 'Scaffolding app structure and core files...',
+      task: () async {
+        // Create directories
+        final dirs = [
+          'config',
+          'core/constants',
+          'core/errors',
+          'core/network',
+          'core/theme',
+          'core/extensions',
+          'core/storage',
+          'core/utils',
+          'core/widgets',
+          'core/di',
+          'routes',
+          'features',
+        ];
 
-    for (final dir in dirs) {
-      await _ensureDirectory(path.join(appBase, dir));
-    }
+        for (final dir in dirs) {
+          await _ensureDirectory(path.join(appBase, dir));
+        }
 
-    // Create nested network directories if missing
-    await _ensureDirectory(path.join(appBase, 'core/network/client'));
-    await _ensureDirectory(path.join(appBase, 'core/network/client/dio_interceptor'));
-    await _ensureDirectory(path.join(appBase, 'core/errors/handler'));
+        // Create nested network directories if missing
+        await _ensureDirectory(path.join(appBase, 'core/network/client'));
+        await _ensureDirectory(
+            path.join(appBase, 'core/network/client/dio_interceptor'));
+        await _ensureDirectory(path.join(appBase, 'core/errors/handler'));
 
-    // 3) Create core files if missing
+        // config dir
+        await _createFileIfMissing(
+          path.join(appBase, 'config/app_config.dart'),
+          TemplateUtils.getAppConfigTemplate(),
+        );
 
-    // config dir
-    await _createFileIfMissing(
-      path.join(appBase, 'config/app_config.dart'),
-      TemplateUtils.getAppConfigTemplate(),
-    );
+        // constants dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/constants/app_assets.dart'),
+          TemplateUtils.getAppAssetsTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/constants/app_texts.dart'),
+          TemplateUtils.getAppTextsTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/constants/api_endpoints.dart'),
+          TemplateUtils.getApiEndpointsTemplate(activeConfig),
+        );
 
-    // constants dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/constants/app_assets.dart'),
-      TemplateUtils.getAppAssetsTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/constants/app_texts.dart'),
-      TemplateUtils.getAppTextsTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/constants/api_endpoints.dart'),
-      TemplateUtils.getApiEndpointsTemplate(config),
-    );
+        // errors dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/errors/exceptions.dart'),
+          TemplateUtils.getExceptionsTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/errors/failures.dart'),
+          TemplateUtils.getFailuresTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/errors/handler/exception_handler.dart'),
+          TemplateUtils.getAppExceptionHandlerTemplate(),
+        );
 
-    // errors dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/errors/failures.dart'),
-      TemplateUtils.getFailuresTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/errors/exceptions.dart'),
-      TemplateUtils.getExceptionsTemplate(),
-    );
+        // network dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/network/api_response.dart'),
+          TemplateUtils.getCommonResponseTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/network/connection_checker.dart'),
+          TemplateUtils.getConnectionCheckerTemplate(),
+        );
 
-    // network dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/network/connection_checker.dart'),
-      TemplateUtils.getConnectionCheckerTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/network/api_response.dart'),
-      TemplateUtils.getCommonResponseTemplate(),
-    );
-    if (config.networkPackage == 'dio') {
-      await _createFileIfMissing(
-        path.join(appBase, 'core/network/client/dio_client.dart'),
-        TemplateUtils.getDioClientTemplate(),
-      );
-      await _createFileIfMissing(
-        path.join(appBase, 'core/network/client/dio_interceptor/logging_interceptor.dart'),
-        TemplateUtils.getLoggingInterceptorTemplate(),
-      );
-      await _createFileIfMissing(
-        path.join(appBase, 'core/errors/handler/exception_handler.dart'),
-        TemplateUtils.getAppExceptionHandlerTemplate(),
-      );
-    } else {
-      await _createFileIfMissing(
-        path.join(appBase, 'core/network/client/http_client.dart'),
-        TemplateUtils.getHttpClientTemplate(),
-      );
-    }
+        if (activeConfig.networkPackage == 'dio') {
+          await _createFileIfMissing(
+            path.join(appBase, 'core/network/client/dio_client.dart'),
+            TemplateUtils.getDioClientTemplate(),
+          );
+          await _createFileIfMissing(
+            path.join(appBase,
+                'core/network/client/dio_interceptor/logging_interceptor.dart'),
+            TemplateUtils.getLoggingInterceptorTemplate(),
+          );
+        } else {
+          await _createFileIfMissing(
+            path.join(appBase, 'core/network/client/http_client.dart'),
+            TemplateUtils.getHttpClientTemplate(),
+          );
+        }
 
-    // theme dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/theme/app_colors.dart'),
-      TemplateUtils.getAppColorsTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/theme/app_theme.dart'),
-      TemplateUtils.getAppThemeTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/theme/app_styles.dart'),
-      TemplateUtils.getAppStylesTemplate(),
-    );
+        // theme dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/theme/app_colors.dart'),
+          TemplateUtils.getAppColorsTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/theme/app_styles.dart'),
+          TemplateUtils.getAppStylesTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/theme/app_theme.dart'),
+          TemplateUtils.getAppThemeTemplate(),
+        );
 
-    // extension dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/extensions/l10_extension.dart'),
-      TemplateUtils.getL10nExtensionTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/extensions/date_formatter.dart'),
-      TemplateUtils.getDateFormatterTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/extensions/theme_extension.dart'),
-      TemplateUtils.getThemeExtensionTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/extensions/app_theme.dart'),
-      TemplateUtils.getAppThemeExtensionTemplate(),
-    );
+        // extensions dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/extensions/date_formatter.dart'),
+          TemplateUtils.getDateFormatterTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/extensions/theme_extension.dart'),
+          TemplateUtils.getThemeExtensionTemplate(),
+        );
 
-    // storage dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/storage/local_db_service.dart'),
-      TemplateUtils.getLocalDbServiceTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/storage/secure_storage_service.dart'),
-      TemplateUtils.getSecureStorageServiceTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/storage/storage_keys.dart'),
-      TemplateUtils.getStorageKeysTemplate(),
-    );
+        // storage dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/storage/local_db_service.dart'),
+          TemplateUtils.getLocalDbServiceTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/storage/secure_storage_service.dart'),
+          TemplateUtils.getSecureStorageServiceTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/storage/storage_keys.dart'),
+          TemplateUtils.getStorageKeysTemplate(),
+        );
 
-    // utils dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/utils/helper.dart'),
-      TemplateUtils.getAppHelperTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/utils/logger.dart'),
-      TemplateUtils.getAppLoggerTemplate(),
-    );
+        // utils dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/utils/helper.dart'),
+          TemplateUtils.getAppHelperTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/utils/logger.dart'),
+          TemplateUtils.getAppLoggerTemplate(),
+        );
 
-    // widgets dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/widgets/custom_button.dart'),
-      TemplateUtils.getCustomButtonTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/widgets/custom_appbar.dart'),
-      TemplateUtils.getCustomAppBarTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/widgets/custom_back_button.dart'),
-      TemplateUtils.getCustomBackButtonTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/widgets/custom_dialog.dart'),
-      TemplateUtils.getCustomDialogTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/widgets/custom_drawer.dart'),
-      TemplateUtils.getCustomDrawerTemplate(),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'core/widgets/social_button.dart'),
-      TemplateUtils.getSocialButtonTemplate(),
-    );
+        // widgets dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/widgets/custom_button.dart'),
+          TemplateUtils.getCustomButtonTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/widgets/custom_appbar.dart'),
+          TemplateUtils.getCustomAppBarTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/widgets/custom_back_button.dart'),
+          TemplateUtils.getCustomBackButtonTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/widgets/custom_dialog.dart'),
+          TemplateUtils.getCustomDialogTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/widgets/custom_drawer.dart'),
+          TemplateUtils.getCustomDrawerTemplate(),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'core/widgets/social_button.dart'),
+          TemplateUtils.getSocialButtonTemplate(),
+        );
 
-    // di dir
-    await _createFileIfMissing(
-      path.join(appBase, 'core/di/injection_container.dart'),
-      TemplateUtils.getInjectionContainerTemplate(config),
-    );
+        // di dir
+        await _createFileIfMissing(
+          path.join(appBase, 'core/di/injection_container.dart'),
+          TemplateUtils.getInjectionContainerTemplate(activeConfig),
+        );
 
-    // 4) Create routing helpers if missing
-    await _createFileIfMissing(
-      path.join(appBase, 'routes', 'app_routes.dart'),
-      TemplateUtils.getAppRoutesTemplate(config),
-    );
-    await _createFileIfMissing(
-      path.join(appBase, 'routes', 'route_names.dart'),
-      TemplateUtils.getRouteNamesTemplate(),
-    );
+        // routes dir
+        await _createFileIfMissing(
+          path.join(appBase, 'routes', 'app_routes.dart'),
+          TemplateUtils.getAppRoutesTemplate(activeConfig),
+        );
+        await _createFileIfMissing(
+          path.join(appBase, 'routes', 'route_names.dart'),
+          TemplateUtils.getRouteNamesTemplate(),
+        );
 
-    // 5) Configure main.dart to match 'create' command behavior
-    final mainFile = File(path.join(root, 'lib', 'main.dart'));
-    if (await mainFile.exists()) {
-      final backupFile = File(path.join(root, 'lib', 'main.dart.backup'));
-      if (!await backupFile.exists()) {
-        await mainFile.copy(backupFile.path);
-        print('Created backup of existing main.dart at lib/main.dart.backup');
-      }
-    }
-    await FileUtils.writeFile(
-      mainFile.path,
-      TemplateUtils.getMainTemplate(config),
+        // Configure main.dart
+        final mainFile = File(path.join(root, 'lib', 'main.dart'));
+        if (await mainFile.exists()) {
+          final backupFile = File(path.join(root, 'lib', 'main.dart.backup'));
+          if (!await backupFile.exists()) {
+            await mainFile.copy(backupFile.path);
+          }
+        }
+        await FileUtils.writeFile(
+          mainFile.path,
+          TemplateUtils.getMainTemplate(activeConfig),
+        );
+      },
     );
 
-    // 6) Generate default home and auth features
-    await FeatureGenerator.generateFeature(
-      'home',
-      projectPath: root,
-      config: config,
-      verbose: false,
-    );
-    await FeatureGenerator.generateFeature(
-      'auth',
-      projectPath: root,
-      config: config,
-      verbose: false,
+    // 4) Generate default home and auth features
+    await LoadingProgress.run(
+      message: 'Generating default features (home & auth)...',
+      task: () async {
+        await FeatureGenerator.generateFeature(
+          'home',
+          projectPath: root,
+          config: activeConfig,
+          verbose: false,
+        );
+        await FeatureGenerator.generateFeature(
+          'auth',
+          projectPath: root,
+          config: activeConfig,
+          verbose: false,
+        );
+      },
     );
 
-    // 7) Add required dependencies to pubspec.yaml
-    await _addDependencies(root, config);
+    // 5) Add required dependencies to pubspec.yaml
+    await LoadingProgress.run(
+      message: 'Updating pubspec.yaml dependencies...',
+      task: () => _addDependencies(root, activeConfig),
+    );
 
     print('\n✅ fbloc_cli initialized for this project.');
     print('You can now use:');

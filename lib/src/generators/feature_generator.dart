@@ -3,31 +3,38 @@ import 'package:path/path.dart' as path;
 import '../models/cli_config.dart';
 import '../utils/config_utils.dart';
 import '../utils/file_utils.dart';
+import '../utils/loading_utils.dart';
 import '../utils/template_utils.dart';
 import 'view_generator.dart';
 
 class FeatureGenerator {
   static Future<void> generateFeature(String featureName,
       {String? projectPath, CliConfig? config, bool verbose = true}) async {
-    if (verbose) {
-      print('Generating feature: $featureName');
-    }
-
     // Load config if not provided
-    config ??= await ConfigUtils.loadConfig(projectPath);
-    if (config == null) {
-      if (verbose) {
-        print(
-            'Warning: No project configuration found. Using default settings.');
-      }
-      config = CliConfig(
-        networkPackage: 'http',
-        stateManagement: 'bloc',
-        navigation: 'go_router',
-        useEquatable: true,
-      );
-    }
+    final resolvedConfig = config ??
+        await ConfigUtils.loadConfig(projectPath) ??
+        CliConfig(
+          networkPackage: 'http',
+          stateManagement: 'bloc',
+          navigation: 'go_router',
+          useEquatable: true,
+        );
 
+    if (verbose) {
+      await LoadingProgress.run(
+        message: 'Scaffolding feature "$featureName"...',
+        task: () => _performGenerateFeature(featureName,
+            projectPath: projectPath, config: resolvedConfig, verbose: verbose),
+      );
+      print('\n✨ Feature generated: $featureName');
+    } else {
+      await _performGenerateFeature(featureName,
+          projectPath: projectPath, config: resolvedConfig, verbose: verbose);
+    }
+  }
+
+  static Future<void> _performGenerateFeature(String featureName,
+      {String? projectPath, required CliConfig config, bool verbose = true}) async {
     // Check if this is auth feature generation
     if (featureName.toLowerCase() == 'auth') {
       await _generateAuthFeature(projectPath, config, verbose: verbose);
@@ -80,22 +87,18 @@ class FeatureGenerator {
       TemplateUtils.getResponseModelTemplate(featureName, config),
     );
 
-    // Generate a default view (home_screen) for the new feature
+    // Generate a default view for the new feature
     await ViewGenerator.generateView(
       '${featureName}_screen',
       featureName,
       projectPath: projectPath,
       config: config,
-      verbose: verbose,
+      verbose: false,
     );
 
     // Generate components for home feature
     if (featureName == 'home') {
       await _generateHomeComponents(basePath, projectPath);
-    }
-
-    if (verbose) {
-      print('Feature $featureName generated successfully!');
     }
   }
 
@@ -103,9 +106,6 @@ class FeatureGenerator {
   static Future<void> _generateAuthFeature(
       String? projectPath, CliConfig config,
       {bool verbose = true}) async {
-    if (verbose) {
-      print('Generating Auth feature with all screens...');
-    }
 
     final basePath = projectPath != null
         ? path.join(projectPath, 'lib', 'app', 'features', 'auth')

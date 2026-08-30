@@ -3,16 +3,13 @@ import 'package:path/path.dart' as path;
 import '../models/cli_config.dart';
 import '../utils/config_utils.dart';
 import '../utils/file_utils.dart';
+import '../utils/loading_utils.dart';
 import '../utils/template_utils.dart';
 import 'feature_generator.dart';
 
 class ProjectGenerator {
   static Future<void> generateProject(String projectName,
       {bool verbose = false}) async {
-    if (verbose) {
-      print('Creating Flutter project: $projectName');
-    }
-
     // Check if project directory already exists
     final projectDir = Directory(projectName);
     if (await projectDir.exists()) {
@@ -30,9 +27,13 @@ class ProjectGenerator {
 
     // Step 1: Interactive setup prompts
     final config = await ConfigUtils.promptForConfiguration();
+    print('');
 
-    // Step 2: Create Flutter project using flutter CLI
-    final result = await _runFlutterCreate(projectName);
+    // Step 2: Create Flutter project using flutter CLI with loading indicator
+    final result = await LoadingProgress.run(
+      message: 'Creating Flutter base project "$projectName"...',
+      task: () => _runFlutterCreate(projectName),
+    );
 
     if (result.exitCode != 0) {
       print('Error creating Flutter project');
@@ -44,15 +45,25 @@ class ProjectGenerator {
     }
 
     try {
-      // Step 3: Save CLI configuration
-      await ConfigUtils.saveConfig(projectName, config);
+      // Step 3: Save CLI configuration and scaffold core architecture
+      await LoadingProgress.run(
+        message: 'Scaffolding core architecture and storage...',
+        task: () async {
+          await ConfigUtils.saveConfig(projectName, config);
+          await _replaceProjectStructure(projectName, config);
+        },
+      );
 
-      // Step 4: Replace lib/ directory and pubspec.yaml
-      await _replaceProjectStructure(projectName, config);
-
-      // Step 5: Generate default home feature
-      await FeatureGenerator.generateFeature('home',
-          projectPath: projectName, config: config, verbose: false);
+      // Step 4: Generate default home and auth features
+      await LoadingProgress.run(
+        message: 'Generating default features (home & auth)...',
+        task: () async {
+          await FeatureGenerator.generateFeature('home',
+              projectPath: projectName, config: config, verbose: false);
+          await FeatureGenerator.generateFeature('auth',
+              projectPath: projectName, config: config, verbose: false);
+        },
+      );
     } catch (e) {
       print('Error during project setup: $e');
       // Clean up the project directory if setup fails

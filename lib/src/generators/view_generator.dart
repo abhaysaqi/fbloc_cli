@@ -2,29 +2,21 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import '../models/cli_config.dart';
 import '../utils/config_utils.dart';
+import '../utils/loading_utils.dart';
 import '../utils/template_utils.dart';
 
 class ViewGenerator {
   static Future<void> generateView(String viewName, String featureName,
       {String? projectPath, CliConfig? config, bool verbose = true}) async {
-    if (verbose) {
-      print('Generating view: $viewName in feature: $featureName');
-    }
-
     // Load config if not provided
-    config ??= await ConfigUtils.loadConfig(projectPath);
-    if (config == null) {
-      if (verbose) {
-        print(
-            'Warning: No project configuration found. Using default settings.');
-      }
-      config = CliConfig(
-        networkPackage: 'http',
-        stateManagement: 'bloc',
-        navigation: 'go_router',
-        useEquatable: true,
-      );
-    }
+    final resolvedConfig = config ??
+        await ConfigUtils.loadConfig(projectPath) ??
+        CliConfig(
+          networkPackage: 'http',
+          stateManagement: 'bloc',
+          navigation: 'go_router',
+          useEquatable: true,
+        );
 
     final featurePath = projectPath != null
         ? path.join(projectPath, 'lib', 'app', 'features', featureName)
@@ -37,6 +29,20 @@ class ViewGenerator {
       return;
     }
 
+    if (verbose) {
+      await LoadingProgress.run(
+        message: 'Generating view "$viewName" in feature "$featureName"...',
+        task: () => _performGenerateView(
+            viewName, featureName, featurePath, resolvedConfig),
+      );
+    } else {
+      await _performGenerateView(
+          viewName, featureName, featurePath, resolvedConfig);
+    }
+  }
+
+  static Future<void> _performGenerateView(String viewName, String featureName,
+      String featurePath, CliConfig config) async {
     final viewPath = path.join(featurePath, 'view');
     final widgetsPath = path.join(viewPath, 'widgets');
 
@@ -60,10 +66,6 @@ class ViewGenerator {
         TemplateUtils.getBottomNavbarTemplate(),
         'Bottom navbar component',
       );
-    }
-
-    if (verbose) {
-      print('View $viewName generated successfully in feature $featureName!');
     }
   }
 

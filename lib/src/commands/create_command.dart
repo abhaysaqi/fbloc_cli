@@ -40,12 +40,6 @@ class CreateCommand extends Command {
     // Treat as direct project creation
     final projectName = rest.first;
     await ProjectGenerator.generateProject(projectName, verbose: false);
-    // Also generate auth feature for direct create path (quiet)
-    await FeatureGenerator.generateFeature(
-      'auth',
-      projectPath: projectName,
-      verbose: false,
-    );
     ProjectGenerator.printProjectSummary(projectName,
         features: ['home', 'auth']);
   }
@@ -68,14 +62,6 @@ class CreateProjectSubcommand extends Command {
 
     final projectName = argResults!.rest.first;
     await ProjectGenerator.generateProject(projectName, verbose: false);
-
-    // Automatically generate auth feature after project creation (quiet)
-    await FeatureGenerator.generateFeature(
-      'auth',
-      projectPath: projectName,
-      verbose: false,
-    );
-
     ProjectGenerator.printProjectSummary(projectName,
         features: ['home', 'auth']);
   }
